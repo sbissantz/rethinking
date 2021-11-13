@@ -1,0 +1,26 @@
+{
+    "id": "8D7CF298",
+    "path": "~/tms/test_schulze.r",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "3590735303",
+    "contents": "",
+    "dirty": false,
+    "created": 1615058015433.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "65,0",
+        "scrollLine": "8"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1615057787,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1615057787,
+    "read_only": false,
+    "read_only_alternatives": []
+}

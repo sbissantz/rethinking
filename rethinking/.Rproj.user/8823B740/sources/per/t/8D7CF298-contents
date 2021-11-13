@@ -1,0 +1,65 @@
+path <- "~/Downloads/Schulze85.sav"
+dta_ls <- foreign::read.spss(path, use.value.labels = TRUE,
+                             use.missings = TRUE)
+
+# Read Metadata -----------------------------------------------------------
+
+spsdta <- memisc::spss.system.file(path)
+nme <- paste("pt", 1:20, sep = "")
+for(i in nme){
+print(memisc::description(spsdta)[i])
+}
+
+#V0223 - v0244, v0325 -v0361, v0370 -0378, v0426 - v0442, v0923 - v0947.
+
+pat <- "v022[3-9]|v023[0-9]|v024[0-4]|v032[5-9]|v033[0-9]|v034[0-9]|v035[0-9]|v036[0-1]|v037[0-8]|v042[6-9]|v043[0-9]|v044[0-2]|v092[3-9]|v093[0-9]|v094[0-7]"
+length(var_pos <- grep(pat, names(dta_ls)))
+matrix(colnames(spsdta[var_pos]),ncol=5)
+
+var_fls <- dta_ls[var_pos]
+var_ls <- lapply(var_fls, as.double)
+df <- as.data.frame(var_ls)
+
+(dta_lbls <- attributes(dta_ls)$variable.labels)
+(df_lbls <- dta_lbls[var_pos])
+names(df) <- df_lbls
+
+old.digno <- getOption("digits")
+options(digits = 3)
+
+# sink("~/tms/schulze554.txt")
+msdf_disj <- musclr::disjoint(df,  rit_min = .55)
+musclr::explore(msdf_disj)
+
+msdf_ovlp <- musclr::overlap(msdf_disj, rit_min = .4, overlap_with = "fragment")
+musclr::explore(msdf_ovlp)
+
+
+
+# sink()
+options(digits = old.digno)
+
+
+msdf_ovlp
+
+#
+# 
+#
+
+path <- "~/Downloads/Schulze85_musclr.sav"
+dta_ls <- foreign::read.spss(path, use.value.labels = TRUE,
+                             use.missings = TRUE)
+dta <- data.frame( dta_ls )
+names(dta) <- attributes(dta_ls)$variable.labels
+
+old.digno <- getOption("digits")
+
+# sink("~/tms/schulze554.txt")
+library(musclr)
+sink( "aaa.pdf" )
+(msdf_disj <- musclr::disjoint(dta,  mrit_min = .55, ))
+(msdf_ovlp <- musclr::overlap(msdf_disj, mrit_min = .4, overlap_with = "fragment"))[[1]]
+sink()
+
+
+
