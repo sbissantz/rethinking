@@ -1,31 +1,109 @@
 
-# Generative process
-#
-N <- 5
-y <- rbinom(N, 1, .73)
+options(mc.cores = parallel::detectCores())
+rstan::rstan_options(auto_write = TRUE)
 
-# Data
-#
-dat_list <- list(
-  y = y,
-  N = length(y)
-)
+# Generative process ------------------------------------------------------
+
+# Generative process
+N <- 1e3
+y <- rbinom(N, 1, prob=.73)
+
+# Model fitting -----------------------------------------------------------
+
+# data list
+dat_ls <- list(
+               y = y,
+               N = N
+               )
 
 model.stan <- "
 data{
-  int<lower=0> N;
-  int<lower=0, upper=1> y[N];
+    int<lower=0> N;
+    int<lower=0, upper=1> y[N];
 }
 parameters{
-  real<lower=0,upper=1> p;
+    real<lower=0, upper=1> p;
 }
 model{
-  y ~ bernoulli(p); // likelihood
-  p ~ normal(0.6, 0.1); // prior
-}
-"
-fit <- rstan::stan(model_code = model.stan, data = dat_list)
+    y ~ bernoulli(p);
+    p ~ normal(.6, 0.1);
+}"
+fit <- rstan::stan(model_code = model.stan, data = dat_ls)
+
+# Inspection & Extraction -------------------------------------------------
+
+print(fit)
+pairs(fit)
+rstan::traceplot(fit)
+
 samples <- rstan::extract(fit)$p
+
+# Sampling to summarize ---------------------------------------------------
+# 3.2
+
+#
+# Intervals of defined boundaries
+#
+
+N_samples <- length(samples)
+# one boundary
+sum(samples < 0.722)/N_samples
+# two boundaries
+sum(samples > 0.71 & samples < 0.73 )/N_samples
+
+# Graph: Interval of defined boundaries
+#
+# Visualize the Posterior
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+# Add boundary
+boundary <- 0.722
+abline(v = boundary, lty=2)
+# Add boundaries
+boundaries <- c(0.71, 0.73)
+abline(v = boundaries, lty=6)
+
+#
+# CI
+# Intervals of defined mass
+#
+
+mass <- 0.5
+quantile( samples, mass )
+
+# Pereentile Interval
+#
+masses <- c(0.7, 0.8)
+quantile( samples, masses )
+
+# Graph: Interval of defined mass 
+#
+# Visualize the Posterior
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+# Add mass 
+mass <- 0.5
+qval <- quantile( samples, mass )
+abline(v = qval, lty=2)
+# Add masses 
+masses <- c(0.7, 0.8) #PI
+qvals <- quantile( samples, masses )
+abline(v = qvals, lty=6)
+
+#
+# HPDI
+# Highest posterior density interval
+#
+
+# For S3 class objects: corece
+rethinking::HPDI( as.vector(samples), prob=.9 )
+
+# Graph: HPDI 
+#
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+qvals <- rethinking::HPDI( as.vector(samples), prob=.9 )
+abline(v=qvals, lty=2)
 
 # Point estimate ----------------------------------------------------------
 
@@ -35,10 +113,10 @@ rethinking::chainmode(samples)
 # 
 # barefoot
 # Idea: generate the density and find the max value
-dd <- density(samples)      
+dsamples <- density(samples)      
 # x: data from which the estimate is to be computed
 # y: the estimated desity values (>=0)
-dd$x[which.max((dd$y))]
+dsamples$x[which.max((dsamples$y))]
 
 # Posterior median
 #
@@ -47,6 +125,17 @@ mean(samples)
 # Posterior mean
 #
 median(samples)
+
+# Visualize 
+#
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+  map <- rethinking::chainmode(samples)
+abline(v=map, lty=2)
+  pmean <- mean(samples)
+abline(v=pmean, lty=4)
+  pmedian <- median(samples)
+abline(v=pmedian, lty=6)
 
 # Loss function 
 #
@@ -61,26 +150,6 @@ y <- min(loss) ; x <- d[which.min(loss)]
 points(x,y, pch=20)
 text(x, y+0.1, paste0("(",round(x, digits = 2),",",round(y, digits = 2),")"))
 
-# Helper Functions
-
-abs_loss <- function(p){
-  d <- seq(0,1, length.out=length(p))
-  sapply(d, function(d) sum(abs(d - p)/sum(p)))
-}
-plot_abs_loss <- function(loss){
-  d <- seq(0,1, length.out=length(loss))
-  y <- min(loss) ; x <- d[which.min(loss)] 
-  plot(d, loss, type="l") ; points(x,y, pch=20)
-  text(x, y+0.1, paste0("(",round(x, digits = 2),",",round(y, digits = 2),")"))
-  abline(v=median(samples), lty=2)
-  abline(v=mean(samples), lty=3)
-  legend("bottomleft", legend = c("median", "mean"), lty = c(2,3))
-}
-
-loss <- abs_loss(samples)
-# Check: vale = median
-plot_abs_loss(loss)
-
 # Quadratic loss 
 # ..with STAN samples
 
@@ -93,51 +162,38 @@ text(x, y+0.1, paste0("(",round(x, digits = 2),",",round(y, digits = 2),")"))
 abline(v=median(samples), lty=2)
 abline(v=mean(samples), lty=3)
 
-# Helper Functions
-
-quad_loss <- function(p){
-  d <- seq(0,1, length.out=length(p))
-  sapply(d, function(d) sum((d - p)^2/sum(p)))
-}
-plot_quad_loss <- function(loss, samples){
-  d <- seq(0,1, length.out=length(loss))
-  y <- min(loss) ; x <- d[which.min(loss)] 
-  plot(d, loss, type="l") ; points(x,y, pch=20)
-  text(x, y+0.1, paste0("(",round(x, digits = 2),",",round(y, digits = 2),")"))
-  abline(v=median(samples), lty=2)
-  abline(v=mean(samples), lty=3)
-  legend("bottomleft", legend = c("median", "mean"), lty = c(2,3))
-}
+# Sampling to simulate predictions ----------------------------------------
+# 3.3
 
 # Analytical solution
+#
 dbinom( 0:2, size=2, prob=0.7)
 # 9% chance to observe w = 0
 # 42% chance to observe w = 1
 # 49% chance to observe w = 2
 
-# Simulated data
+# Simulated data 
+#
 N <- 1e4
-trials <- 2 # globe tosses
-(dummy_w <- rbinom(N, trials, prob = 70/100))
+tosses <- 9 # globe tosses
+dummy_w <- rbinom(N, tosses, prob = 70/100)
+# Equal to `dbinom( 0:2, size=2, prob=0.7)`?
 table(dummy_w) / N
-# Compare to analytical solution
-dbinom( 0:2, size=2, prob=0.7)
 
-# Simulated data
-N <- 1e4
-tosses <- 10 # globe tosses
-(dummy_w <- rbinom(N, tosses, prob = 70/100))
-
-# Sums)
-table(dummy_w)
+# Visualize
+#
 # Percentage
 table(dummy_w) / N
-# Simple histogram
-plot(table(dummy_w), xlab="Frequencies (x/10)", ylab = "Dummy water count")
+
+# Frequency table 
+ftbl_w <- table(dummy_w) 
+plot(ftbl_w, xlab="Dummy water Count (x/10)", ylab = "Frequency")
 # 7/10 guess for 70/100... pretty awesome!
 
-# Sampling distributions
 #
+# Understanding sampling distributions 
+#
+
 seq <- seq(-5, 5, length.out=100)
 # Density function
 plot(dnorm(seq, mean = 0, sd = 1))
@@ -150,36 +206,46 @@ plot(dbinom(0:12, size=10, prob=0.7),
 axis(side = 1, at=1:13, labels = 0:12)
 abline(v=11.5, lty=2)
 text(12.5, 0.1, "Impossible")
-x <- 1:11
-N <- 1e6
-(y <- table(rbinom(N, size = 10, prob = 0.7)) / N)
+  N <- 1e6 ; tosses <- 10
+  dummy_w <- rbinom(N, tosses, prob = 0.7)
+  x <- 1:11 ; y <- table(dummy) / N
 points(x, y, pch=3)
+# Awesome...
 
 #
 # Understanding the Posterior Predictive Distribution
-# https://stackoverflow.com/questions/42926683/how-does-prob-argument-in-rbinom-work-when-prob-is-a-vector
 #
 
 # Posterior distribution
 #
-plot(density(samples))
+dsamples <- density(samples)
+plot(dsamples, main=NA)
 
-# A sampling distribution
-# p = 0.6
-w <- rbinom(1e4, size=9, prob = .6)
+# A sampling distribution 
+p <- 0.6
+w <- rbinom(1e4, size=9, prob = p)
 
 # Sampling distributions
 #
 p_range <- seq(0.1,0.9,by=0.1)
 N <- 1e4
-dummy_w <- vapply(p_range, function(p) rbinom(N, size=9, prob=p ), 
-                  FUN.VALUE = numeric(N))
+gen_smpl_dstrb <- function(p, N) rbinom(N, size=9, prob=p )
+dummy_w <- vapply(p_range, gen_smpl_dstrb, N=N, FUN.VALUE = numeric(N))
 
+# Visualize sampling distributions
+#
+simpl_hist <- function(p) {
+   plot(table(dummy_w[,p]), main=paste0(p_range[p]))
+  
+}
 op <- par(no.readonly = TRUE)
 par(mfrow = c(3,3))
-  lapply(1:length(p_range), function(p) plot(table(dummy_w[,p]), 
-                                             main=paste0(p_range[p])))
+  lapply(1:length(p_range), simpl_hist)
 par(op)
+
+#
+# TODO
+#
 
 # Sampling distribution 
 # ... posterior mean
