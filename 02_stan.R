@@ -209,3 +209,5 @@ hist(w_ppd, main="Posterior Predictive Distribution",
 hist(w_pm)
 hist(w_ppd, add = TRUE, col="black", xlab="number of water samples")
 # Illusion: model seems more consistent with the data then it really it!
+
+# Add
