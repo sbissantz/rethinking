@@ -136,9 +136,7 @@ table(dummy_w) / N
 plot(table(dummy_w), xlab="Frequencies (x/10)", ylab = "Dummy water count")
 # 7/10 guess for 70/100... pretty awesome!
 
-#
-# ~ sampling distributions
-# ...If we were to repeat the test over and over again...
+# Sampling distributions
 #
 seq <- seq(-5, 5, length.out=100)
 # Density function
@@ -157,14 +155,57 @@ N <- 1e6
 (y <- table(rbinom(N, size = 10, prob = 0.7)) / N)
 points(x, y, pch=3)
 
-
 #
 # Understanding the Posterior Predictive Distribution
-#
 # https://stackoverflow.com/questions/42926683/how-does-prob-argument-in-rbinom-work-when-prob-is-a-vector
+#
 
+# Posterior distribution
+#
+plot(density(samples))
+
+# A sampling distribution
+# p = 0.6
 w <- rbinom(1e4, size=9, prob = .6)
-w_ast <- rbinom(1e4, size=9, prob = samples)
 
-plot(table(w))
-plot(table(w_ast))
+# Sampling distributions
+#
+p_range <- seq(0.1,0.9,by=0.1)
+N <- 1e4
+dummy_w <- vapply(p_range, function(p) rbinom(N, size=9, prob=p ), 
+                  FUN.VALUE = numeric(N))
+
+op <- par(no.readonly = TRUE)
+par(mfrow = c(3,3))
+  lapply(1:length(p_range), function(p) plot(table(dummy_w[,p]), 
+                                             main=paste0(p_range[p])))
+par(op)
+
+# Sampling distribution 
+# ... posterior mean
+# predictive distribution -- posterior mean
+# 
+w_pm <- rbinom(1e4, size=9, prob = mean(samples))
+hist(w_pm)
+
+# TODO: Do it with a CI!
+#
+#
+
+# Posterior predictive distribution
+# ... all samples from posterior
+# Note: If the 'prob' argument is a vector it gets recyceled
+# Why does it work? because every sample is a conjecture about p. So if we
+# sample sequences of globe tosses where the probability to suceed in each try
+# is a conjecture
+#
+w_ppd <- rbinom(1e4, size=9, prob = samples)
+hist(w_ppd, main="Posterior Predictive Distribution", 
+     xlab="number of water samples") 
+
+# Overconfidence tran
+# Comparing: PPD vs. PD -- Posterior mean
+#
+hist(w_pm)
+hist(w_ppd, add = TRUE, col="black", xlab="number of water samples")
+# Illusion: model seems more consistent with the data then it really it!
