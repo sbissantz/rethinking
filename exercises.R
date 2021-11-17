@@ -122,12 +122,99 @@ up <- cards[1,]
 down <- cards[2,]
 sum(up == 1 & down == 1) / sum(up==1)
 
+# E exercises -------------------------------------------------------------
 
+# Requires a specific set of samples
 
+# Generative proces
+#
+N <- 6 
+trials <- 9
+y <- rbinom(N, trials, 0.73)
 
+dat_list <- list(
+  y = y,
+  N = length(y)
+)
+mdl.stan <- "
+data{
+  int<lower=0> N;
+  int<lower=0> y[N];
+}
+parameters{
+ real<lower=0, upper=1> p;
+}
+model{
+  y ~ binomial(9, p);
+  p ~ uniform(0,1);
+}
+"
+fit <- rstan::stan(model_code = mdl.stan, data = dat_list)
+samples <- rstan::extract(fit)$p
+hist(samples) # Pretty good approximation
 
+# 3E1 ---------------------------------------------------------------------
 
+dsamples <- density(samples)
+plot(dsamples, xlim=c(0,1)) ; abline(v=0.2)
 
+N_samples <- length(samples)
+boundary <- 0.5
+sum(samples < boundary)/N_samples
+# Mass 0.5%
 
+# 3E2 ---------------------------------------------------------------------
 
+dsamples <- density(samples)
+plot(dsamples) ; abline(v=0.8)
+
+N_samples <- length(samples)
+boundary <- 0.8
+sum(samples < boundary)/N_samples
+# Mass: 98% 
+
+# 3E3 ---------------------------------------------------------------------
+
+dsamples <- density(samples)
+plot(dsamples, xlim=c(0,1)) ; abline(v=0.2) ; abline(v=0.8)
+
+N_samples <- length(samples)
+boundary <- c(0.2, 0.8)
+sum(samples > boundary[1] & samples < boundary[2]) / N_samples
+# Mass: 98%
+
+# 3E4 ---------------------------------------------------------------------
+
+mass <- 0.2
+(qv <- quantile(samples, mass))
+
+# Quantile value: 0.63
+dsamples <- density(samples)
+plot(dsamples) ; abline(v=qv)
+
+# 3E5 ---------------------------------------------------------------------
+
+mass <- 0.2
+(qv <- quantile(samples, 1-mass))
+
+# Quantile value: 0.63
+dsamples <- density(samples)
+plot(dsamples) ; abline(v=qv)
+
+# 3E6 ---------------------------------------------------------------------
+
+mass <- 0.66
+hpdi <- rethinking::HPDI(as.vector(samples), prob=mass)
+
+dsamples <- density(samples)
+plot(dsamples) ; abline(v=hpdi)
+
+# 3E7 ---------------------------------------------------------------------
+
+mass <- 0.66
+# ASM: equal PP below and above the interval
+pi <- rethinking::PI(as.vector(samples), prob=mass)
+
+dsamples <- density(samples)
+plot(dsamples) ; abline(v=pi)
 
