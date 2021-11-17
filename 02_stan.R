@@ -5,7 +5,7 @@ rstan::rstan_options(auto_write = TRUE)
 # Generative process ------------------------------------------------------
 
 # Generative process
-N <- 1e3
+N <- 100
 y <- rbinom(N, 1, prob=.73)
 
 # Model fitting -----------------------------------------------------------
@@ -243,28 +243,24 @@ par(mfrow = c(3,3))
   lapply(1:length(p_range), simpl_hist)
 par(op)
 
-#
-# TODO
-#
-
 # Sampling distribution 
-# ... posterior mean
+# ...for the posterior mean
 # predictive distribution -- posterior mean
 # 
 w_pm <- rbinom(1e4, size=9, prob = mean(samples))
 hist(w_pm)
 
 # TODO: Do it with a CI!
-#
-#
 
-# Posterior predictive distribution
-# ... all samples from posterior
-# Note: If the 'prob' argument is a vector it gets recyceled
-# Why does it work? because every sample is a conjecture about p. So if we
-# sample sequences of globe tosses where the probability to suceed in each try
-# is a conjecture
 #
+# PPD
+# Posterior predictive distribution
+# ...all samples from posterior
+
+# Note: If the 'prob' argument is a vector it gets recycled Why does it work?
+# because every sample is a conjecture about p. So if we sample sequences of
+# globe tosses where the probability to succeed in each try is a conjecture
+
 w_ppd <- rbinom(1e4, size=9, prob = samples)
 hist(w_ppd, main="Posterior Predictive Distribution", 
      xlab="number of water samples") 
@@ -275,3 +271,7 @@ hist(w_ppd, main="Posterior Predictive Distribution",
 hist(w_pm)
 hist(w_ppd, add = TRUE, col="black", xlab="number of water samples")
 # Illusion: model seems more consistent with the data then it really it!
+
+
+
+
