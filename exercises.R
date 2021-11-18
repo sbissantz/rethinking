@@ -218,3 +218,83 @@ pi <- rethinking::PI(as.vector(samples), prob=mass)
 dsamples <- density(samples)
 plot(dsamples) ; abline(v=pi)
 
+# 3M1 ---------------------------------------------------------------------
+
+tosses <- 15 
+w <- 8 ; l <- tosses - w 
+y <- c(rep(0,l), rep(1,l))
+
+dat_list <- list(
+  y = y,
+  N = length(y)
+)
+
+mdl.stan <- "
+data{
+  int<lower=0> N;
+  int<lower=0, upper=1> y[N];
+}
+parameters{
+  real<lower=0, upper=1> p;
+}
+model{
+  p ~ uniform(0,1);
+  y ~ bernoulli(p);
+}
+"
+# Hairy caterpillar ocular inspection test
+#
+fit <- rstan::stan(model_code = mdl.stan, data = dat_list)
+rstan::traceplot(fit)
+pairs(fit) ; print(fit)
+# Samples from the Posterior 
+#
+samples <- rstan::extract(fit)$p
+# Visualize the Posterior
+#
+dsamples <- density(samples) 
+plot(dsamples)
+
+# 3M2 ---------------------------------------------------------------------
+
+boundary <- 0.9
+(hpdi <- rethinking::HPDI(as.vector(samples), boundary))
+
+# Visualize: Posterior & HPDI
+#
+dsamples <- density(samples) 
+plot(dsamples) ; abline(v=hpdi)
+
+# 3M3 ---------------------------------------------------------------------
+
+# PPC
+# Posterior Predictive Checks
+N <- 1e4
+ppd <- rbinom(N, tosses, prob = samples)
+plot(table(ppd))
+
+# Standardize 
+#
+plot(table(ppd) / N) # around 15%
+# table(ppd == 8)/N
+(table(ppd)/N) * 100
+
+# 3M4 ---------------------------------------------------------------------
+
+# PPD
+#
+tosses <- 9
+ppd_ast <- rbinom(N, tosses, prob = samples)
+plot(table(ppd_ast))
+
+# Standardize 
+#
+plot(table(ppd_ast) / N) # around 15%
+# table(ppd == 6)/N 
+(table(ppd_ast)/N) * 100
+
+# 3M4 ---------------------------------------------------------------------
+
+# Posterior Predictive Checks
+# ...this means simulate the distribution of samples, averaging over the
+# posterior uncertainty in p
