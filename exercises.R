@@ -327,81 +327,86 @@ model{
 "
 fit_2 <- rstan::stan(model_code = mdl_2.stan, data = dat_list)
 
+
+
+# Pre
+#
 fits <- list(fit, fit_2)
 samples <-  lapply(fits, function(ps) rstan::extract(ps)$p)
 dsamples <- lapply(samples, density)
-plot(dsamples[[1]], xlim=c(0,1), ylim=c(0,6)) ; abline(v=0.2)
-lines(dsamples[[2]], lty=2)
+N_samples <- lapply(samples, length)
+IODB <- function(samples, boundary, N_samples) {
+    sum(samples < boundary)/N_samples
+}
+IODB_2 <- function(samples, N_samples) {
+     sum(samples > boundary[1] & samples < boundary[2]) / N_samples
+}
+calc_qv <- function(samples, mass) quantile(samples, mass)
 
-#
-# Todo
-#
+# IODB (Graphic)
+# 
+plot(dsamples[[1]], ylim=c(0,6)) 
+    lines(dsamples[[2]], lty=2)
+boundary <- c(0.2, 0.8)
+    abline(v=boundary, lty=3, lwd=0.5)
 
-N_samples <- length(samples)
+# IODB (Calc)
+# 
 boundary <- 0.5
-sum(samples < boundary)/N_samples
-# Mass 0.5%
+mapply(IODB, samples, boundary, N_samples)
+# Mass: 0.5% and 0.1%
 
-# 3E2 ---------------------------------------------------------------------
 
-dsamples <- density(samples)
-plot(dsamples) ; abline(v=0.8)
-
-N_samples <- length(samples)
 boundary <- 0.8
-sum(samples < boundary)/N_samples
+mapply(IODB, samples, boundary, N_samples)
 # Mass: 98% 
 
-# 3E3 ---------------------------------------------------------------------
-
-dsamples <- density(samples)
-plot(dsamples, xlim=c(0,1)) ; abline(v=0.2) ; abline(v=0.8)
-
-N_samples <- length(samples)
+# IODB
+#
 boundary <- c(0.2, 0.8)
-sum(samples > boundary[1] & samples < boundary[2]) / N_samples
+mapply(IODB_2, samples, N_samples)
 # Mass: 98%
 
-# 3E4 ---------------------------------------------------------------------
-
+# CI
+#
 mass <- 0.2
-(qv <- quantile(samples, mass))
+(qvs <- lapply(samples, calc_qv, mass=mass))
 
+plot(dsamples[[1]], ylim=c(0,6)) 
+    lines(dsamples[[2]], lty=2)
+    abline(v=qvs, lty=3, lwd=0.5)
 # Quantile value: 0.63
-dsamples <- density(samples)
-plot(dsamples) ; abline(v=qv)
 
-# 3E5 ---------------------------------------------------------------------
-
+# CI
+#
 mass <- 0.2
-(qv <- quantile(samples, 1-mass))
+(qvs <- lapply(samples, calc_qv, mass=1-mass))
 
-# Quantile value: 0.63
-dsamples <- density(samples)
-plot(dsamples) ; abline(v=qv)
+plot(dsamples[[1]], ylim=c(0,6)) 
+    lines(dsamples[[2]], lty=2)
+    abline(v=qvs, lty=3, lwd=0.5)
 
-# 3E6 ---------------------------------------------------------------------
-
+# CI
+#
 mass <- 0.66
-hpdi <- rethinking::HPDI(as.vector(samples), prob=mass)
+calc_hpdi <- function(samples, mass) {
+    rethinking::HPDI(as.vector(samples), prob=mass)
+}
+hpdis <- lapply(samples, calc_hpdi, mass)
 
-dsamples <- density(samples)
-plot(dsamples) ; abline(v=hpdi)
+plot(dsamples[[1]], ylim=c(0,6)) 
+    lines(dsamples[[2]], lty=2)
+lapply(hpdis, function(hpdi) abline(v=hpdi,lty=c(3,4), lwd=0.5 ))
 
-# 3E7 ---------------------------------------------------------------------
-
+# PI
+#
+calc_pi <- function(samples, mass) {
+    rethinking::PI(as.vector(samples), prob=mass)
+}
 mass <- 0.66
 # ASM: equal PP below and above the interval
-pi <- rethinking::PI(as.vector(samples), prob=mass)
-
-dsamples <- density(samples)
-plot(dsamples) ; abline(v=pi)
-
-
-
-
-
-
-
-
+pis <- lapply(samples, calc_pi, mass) 
+plot(dsamples[[1]], ylim=c(0,6)) 
+    lines(dsamples[[2]], lty=2)
+lapply(pis, function(pi) abline(v=pi,lty=c(3,4), lwd=0.5 ))
 
