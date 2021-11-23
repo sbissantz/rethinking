@@ -451,11 +451,3 @@ repeat{
     if(pi_diff[N] < 0.05 ) break
 }
 plot(seq(N), pi_diff[seq(N)])
-
-
-
-
-head(pi_diff, n=1e4)
-
-
-
