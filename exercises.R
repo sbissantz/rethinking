@@ -410,3 +410,52 @@ plot(dsamples[[1]], ylim=c(0,6))
     lines(dsamples[[2]], lty=2)
 lapply(pis, function(pi) abline(v=pi,lty=c(3,4), lwd=0.5 ))
 
+
+# 3M5 ---------------------------------------------------------------------
+
+pi_diff <- vector(length=1e6)
+N <- 1
+
+repeat{
+    (N <- N+1)
+    trials <- 1 
+    y <- rbinom(N, trials, 0.73)
+    dat_list <- list(
+                     y = y,
+                     N = length(y)
+    )
+    mdl.stan <- "
+    data{
+        int<lower=0> N;
+        int<lower=0, upper=1> y[N];
+    }
+    parameters{
+        real<lower=0, upper=1> p;
+    }
+    model{
+        p ~ uniform(0,1);
+        y ~ bernoulli(p);
+    }
+    "
+    #
+    # HCOIT
+    # Hairy caterpillar ocular inspection test
+    fit <- rstan::stan(model_code = mdl.stan, data = dat_list)
+    # Samples from the Posterior 
+    #
+    samples <- rstan::extract(fit)$p
+    mass <- 0.99
+    # ASM: equal PP below and above the interval
+    (pi <- rethinking::PI(as.vector(samples), prob=mass))
+    (pi_diff[N] <- pi[2] - pi[1])
+    if(pi_diff[N] < 0.05 ) break
+}
+plot(seq(N), pi_diff[seq(N)])
+
+
+
+
+head(pi_diff, n=1e4)
+
+
+
