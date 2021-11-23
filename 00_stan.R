@@ -43,7 +43,3 @@ samples <- rstan::extract(fit)
 plot(density(samples$p), main=NA)
 boundaries <- c(0.71, 0.73)
 abline(v = boundaries)
-
-
-
-
