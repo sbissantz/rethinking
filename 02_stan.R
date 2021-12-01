@@ -37,7 +37,6 @@ pairs(fit)
 rstan::traceplot(fit)
 
 samples <- rstan::extract(fit)$p
-
 # Sampling to summarize ---------------------------------------------------
 # 3.2
 
@@ -67,11 +66,10 @@ abline(v = boundaries, lty=6)
 # CI
 # Intervals of defined mass
 #
-
 mass <- 0.5
 quantile( samples, mass )
 
-# Pereentile Interval
+# Percentile Interval
 #
 masses <- c(0.7, 0.8)
 quantile( samples, masses )
@@ -89,6 +87,14 @@ abline(v = qval, lty=2)
 masses <- c(0.7, 0.8) #PI
 qvals <- quantile( samples, masses )
 abline(v = qvals, lty=6)
+
+#
+#
+# PI
+# Percentile interval
+#
+mass <- .9
+rethinking::PI(samples, prob=mass)
 
 #
 # HPDI
