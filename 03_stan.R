@@ -24,10 +24,8 @@ small <- replicate(N, prod(1 + runif(steps, 0, 0.01)))
 # Not Normal
 big <- replicate(N, prod(1 + runif(steps, 0, 0.5)))
 # Visualize
-op <- par(mfrow=c(1,1))
-par(mfrow=c(2,1))
-    plot(density(small)) ; plot(density(big))
-par(op)
+plot(density(small)) 
+plot(density(big))
 
 # Normal by log multiplication
 #
@@ -93,6 +91,7 @@ samples <- rstan::extract(fit)
 # Plot: Marginal posterior densities
 #
 plot( density(samples$mu) )
+# Add a normal distribution 
 mu <- mean(samples$mu)
 sigma <- sd(samples$mu)
 curve(dnorm(x, mu, sigma), add=TRUE, lty=2)
@@ -100,6 +99,7 @@ curve(dnorm(x, mu, sigma), add=TRUE, lty=2)
 # Plot: Marginal posterior densities
 #
 plot( density(samples$sigma) )
+# Add a normal distribution 
 mu <- mean(samples$sigma)
 sigma <- sd(samples$sigma)
 curve(dnorm(x, mu, sigma), add=TRUE, lty=2)
@@ -108,8 +108,22 @@ curve(dnorm(x, mu, sigma), add=TRUE, lty=2)
 #
 plot( samples$mu, samples$sigma, pch=20, cex=0.3)
 
+# Posterior-Relations between parameters
+# 
+(Sigma <- cov(as.matrix(fit)[,-3]))
+cor(as.matrix(fit)[,-3])
+cov2cor(Sigma)
+# Learning about mu tells us almost nothing about sigma!
 
-rethinking::dens
+# Multicariate sampling
+# (get > 4e3 samples)
+#
+(mu <- sapply(samples, mean)[-3])
+(Sigma <- cov(as.matrix(fit)[,-3]))
+N <- 1e5
+MASS::mvrnorm(N, mu, Sigma = cov(as.matrix(fit)[,-3]))
+
+
 
 
 
