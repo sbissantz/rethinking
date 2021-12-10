@@ -115,7 +115,7 @@ cor(as.matrix(fit)[,-3])
 cov2cor(Sigma)
 # Learning about mu tells us almost nothing about sigma!
 
-# Multicariate sampling
+# Multivariate sampling
 # (get > 4e3 samples)
 #
 (mu <- sapply(samples, mean)[-3])
@@ -123,8 +123,47 @@ cov2cor(Sigma)
 N <- 1e5
 MASS::mvrnorm(N, mu, Sigma = cov(as.matrix(fit)[,-3]))
 
+# Data example
+#
+library(rethinking)
+data(Howell1) ; d <- Howell1
+rethinking::precis(d)
+d2 <- d[d$age >18,]
+plot(d2$weight, d2$height)
 
+# Linear model 
+#
+# h ~ normal(mu, sigma)
+#   mu_i = a + b(x_i - xbar) 
+#     a ~ normal(178, 20)
+#     b ~ normal(0, 10)
+#   sigma ~ uniform(0, 50)
 
+# Prior implications
+#
+# alpha prior
+curve(dnorm(x, 178, 20), from=100, to=250)
+# beta prior
+curve(dnorm(x, 0, 10), from=-50, to=50)
+# sigma prior
+curve(dunif(x, 0, 50), from=-10, to=60)
+
+# Prior predictive simulation
+#
+# mu 
+N <- 1e2
+a <- rnorm(N, 178, 20)
+# b <- rnorm(N, 0, 10)
+b <- rlnorm(N, 0, 1)
+x <- d2$weight ; y <- d2$height
+xbar <- mean(d2$weight) 
+plot(NULL, xlim=range(x), ylim=c(-100, 400),
+     xlab="Weight", ylab="Height")
+abline(h=c(0,272), lty = 2)
+for(i in 1:N) {
+  curve(a[i] + b[i]*(x-xbar), from=min(d2$weight)[1], to=max(d2$weight), 
+        add=TRUE, col=col.alpha("black", )) 
+}
 
 
 
