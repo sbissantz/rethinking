@@ -148,6 +148,12 @@ curve(dnorm(x, 0, 10), from=-50, to=50)
 # sigma prior
 curve(dunif(x, 0, 50), from=-10, to=60)
 
+# log normal pripr
+curve(dlnorm(x, 0, 1), from=0, to=10, xlab="weight", ylab="height")
+# check the 95% percentile interval
+qv <- qlnorm(c(.5,.95), meanlog=0, sdlog=1)
+abline(v=qv, lty=2)
+
 # Prior predictive simulation
 #
 # mu 
@@ -162,8 +168,57 @@ plot(NULL, xlim=range(x), ylim=c(-100, 400),
 abline(h=c(0,272), lty = 2)
 for(i in 1:N) {
   curve(a[i] + b[i]*(x-xbar), from=min(d2$weight)[1], to=max(d2$weight), 
-        add=TRUE, col=col.alpha("black", )) 
+        add=TRUE, col=col.alpha("black", .2)) 
 }
+
+# Fit the model
+#
+dat_list <- list(
+                 h = d2$height,
+                 w = d2$weight,
+                 N = length(d2$height)
+)
+
+mdl.stan <- "
+data {
+    int<lower=0> N;
+    vector[N] h;
+    vector[N] w;
+}
+transformed data {
+    real wbar; 
+    wbar = mean(w);
+}
+parameters {
+   real alpha; 
+   real beta; 
+   real<lower=0> sigma; 
+}
+model {
+   h ~ normal(alpha + beta * (w - wbar), sigma);
+}
+generated quantities {
+    vector[N] mu;
+    mu = alpha + beta * (w-wbar);
+}
+"
+# NOTE: (w - mean(w)) boost the n° effective samples enormously!
+fit <- rstan::stan(model_code = mdl.stan, data = dat_list)
+precis(fit, depth=2)
+samples <- rstan::extract(fit)
+N_samples <- length(samples$alpha)
+# Visualize
+#
+plot(d2$weight, d2$height, col="lightgrey")
+for(i in seq(N_samples)) {
+    curve(samples$alpha[i] + samples$beta[i]*(x - mean(d2$weight)), add=TRUE) 
+}
+
+# PPC
+#
+
+
+
 
 
 
