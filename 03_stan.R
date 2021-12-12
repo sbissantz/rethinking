@@ -171,19 +171,24 @@ for(i in 1:N) {
         add=TRUE, col=col.alpha("black", .2)) 
 }
 
+w_seq <- seq(20,70)
 # Fit the model
 #
 dat_list <- list(
                  h = d2$height,
                  w = d2$weight,
-                 N = length(d2$height)
+                 N = length(d2$height),
+                 w_seq = w_seq,
+                 W = length(w_seq)
 )
 
 mdl.stan <- "
 data {
     int<lower=0> N;
+    int<lower=0> W;
     vector[N] h;
     vector[N] w;
+    vector[W] w_seq;
 }
 transformed data {
     real wbar; 
@@ -198,8 +203,8 @@ model {
    h ~ normal(alpha + beta * (w - wbar), sigma);
 }
 generated quantities {
-    vector[N] mu;
-    mu = alpha + beta * (w-wbar);
+    vector[W] mu;
+    mu = alpha + beta * (w_seq-wbar);
 }
 "
 # NOTE: (w - mean(w)) boost the n° effective samples enormously!
@@ -216,10 +221,8 @@ for(i in seq(N_samples)) {
 
 # PPC
 #
-
-
-
-
+# Posterior distributen for a 50kg Kung
+plot(density(samples$mu[,30]))
 
 
 
