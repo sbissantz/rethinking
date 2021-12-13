@@ -207,9 +207,10 @@ generated quantities {
     mu = alpha + beta * (w_seq-wbar);
 }
 "
+
 # NOTE: (w - mean(w)) boost the n° effective samples enormously!
 fit <- rstan::stan(model_code = mdl.stan, data = dat_list)
-precis(fit, depth=2)
+rethinking::precis(fit, depth=2)
 samples <- rstan::extract(fit)
 N_samples <- length(samples$alpha)
 # Visualize
@@ -218,13 +219,28 @@ plot(d2$weight, d2$height, col="lightgrey")
 for(i in seq(N_samples)) {
     curve(samples$alpha[i] + samples$beta[i]*(x - mean(d2$weight)), add=TRUE) 
 }
+# MAP line 
+curve(mean(samples$alpha) + mean(samples$beta)*(x - mean(d2$weight)), add=TRUE, 
+      col = "white") 
 
-# PPC
+# Posterior distribution for the mean height 
+# ..of a 50kg Kung
 #
-# Posterior distributen for a 50kg Kung
 plot(density(samples$mu[,30]))
 
+# Posterior line predictions (mu)
+# for Kungs between 20-50kg
+# 
+plot(d2$weight, d2$height, col="lightblue")
+for(i in seq(w_seq)){
+  points(w_seq, samples$mu[i,], pch=16)
+}
+mean.mu <- apply(samples$mu, 2, mean)
+points(w_seq, mean.mu, pch=20, col="white", cex=.5)
 
-
-
-
+plot(d2$weight, d2$height, col="lightblue")
+# ASM: Same prob. mass at each tail 
+mean.mu <- apply(samples$mu, 2, mean)
+PI.mu <- apply(samples$mu, 2, rethinking::PI)
+lines(w_seq, mean.mu)
+shade(PI.mu, w_seq)
