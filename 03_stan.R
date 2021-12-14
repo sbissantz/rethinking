@@ -203,8 +203,10 @@ model {
    h ~ normal(alpha + beta * (w - wbar), sigma);
 }
 generated quantities {
-    vector[W] mu;
-    mu = alpha + beta * (w_seq-wbar);
+vector[W] mu 
+    = alpha + beta * (w_seq-wbar);
+real h_tilde[N]
+    = normal_rng(alpha + beta * w, sigma);
 }
 "
 
@@ -244,3 +246,8 @@ mean.mu <- apply(samples$mu, 2, mean)
 PI.mu <- apply(samples$mu, 2, rethinking::PI)
 lines(w_seq, mean.mu)
 shade(PI.mu, w_seq)
+
+# Posterior prediction
+#
+
+# Model fitted ... but visualization is missing
