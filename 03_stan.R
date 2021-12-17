@@ -40,9 +40,9 @@ rethinking::precis(d)
 d2 <- d[d$age >18,]
 
 # Model
-# h ~ Normal(mu, sigma)
-# mu ~ Normal(178, 20) 
-# sigma ~ Uniform(0, 50)
+# h ~ normal(mu, sigma)
+# mu ~ normal(178, 20) 
+# sigma ~ uniform(0, 50)
 
 # Priors
 #
@@ -63,35 +63,36 @@ prior_h <- rnorm(N, sample_mu, sample_sigma)
 # Visualize the joint prior
 plot(density(prior_h))
 
-# Model
-#
 dat_ls <- list(
                  N = length(d2$height),
                  h = d2$height
 )
+# Model mdl3_1
+#  h ~ normal(mu, sigma);
+#  mu ~ normal(170, 20);
+#  sigma ~ uniform(0, 50);
 
-model.stan <- "
-data{
-    int<lower=0> N;
-    real<lower=0> h[N];
-}
-parameters{
-   real mu; 
-   real sigma; 
-}
-model{
-    h ~ normal(mu, sigma);
-    mu ~ normal(170, 20);
-    sigma ~ uniform(0, 50);
-}
-"
-fit <- rstan::stan(model_code = model.stan, data = dat_ls)
-samples <- rstan::extract(fit)
+# Note: test.stan requires to end with a blank line
+f31 <- file.path(getwd(), "m31.stan")
+m31 <- cmdstanr::cmdstan_model(f31, pedantic=TRUE)
+
+f31 <- m31$sample(
+  data = dat_ls, 
+  seed = 123, 
+  chains = 4, 
+  parallel_chains = 4,
+  refresh = 500
+)
+
+f31$summary()
+f31$cmdstan_diagnose()
+samples <- f31$draws(variables = c("mu", "sigma"), format = "df")
+bayesplot::mcmc_trace(samples)
 
 # Plot: Marginal posterior densities
 #
 plot( density(samples$mu) )
-# Add a normal distribution 
+# Compare to a normal distribution 
 mu <- mean(samples$mu)
 sigma <- sd(samples$mu)
 curve(dnorm(x, mu, sigma), add=TRUE, lty=2)
@@ -110,18 +111,23 @@ plot( samples$mu, samples$sigma, pch=20, cex=0.3)
 
 # Posterior-Relations between parameters
 # 
-(Sigma <- cov(as.matrix(fit)[,-3]))
-cor(as.matrix(fit)[,-3])
+(Sigma <- cov(samples[,1:2]))
 cov2cor(Sigma)
 # Learning about mu tells us almost nothing about sigma!
+# cor(samples[,1:2])
+
+#
+# Stop
+#
 
 # Multivariate sampling
 # (get > 4e3 samples)
 #
+mean(samples$Sigma)
 (mu <- sapply(samples, mean)[-3])
-(Sigma <- cov(as.matrix(fit)[,-3]))
+(Sigma <- cov(samples[,1:2]))
 N <- 1e5
-MASS::mvrnorm(N, mu, Sigma = cov(as.matrix(fit)[,-3]))
+MASS::mvrnorm(N, mu, Sigma)
 
 # Data example
 #
@@ -245,9 +251,44 @@ plot(d2$weight, d2$height, col="lightblue")
 mean.mu <- apply(samples$mu, 2, mean)
 PI.mu <- apply(samples$mu, 2, rethinking::PI)
 lines(w_seq, mean.mu)
-shade(PI.mu, w_seq)
+rethinking::shade(PI.mu, w_seq)
 
 # Posterior prediction
 #
 
 # Model fitted ... but visualization is missing
+dat_list <- list(
+  y = rbinom(1e3, 1, .5),
+  N = 1e3 
+)
+# Note: test.stan requires to end with a blank line
+file <- file.path(getwd(), "test.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(
+  data = dat_list, 
+  seed = 123, 
+  chains = 4, 
+  parallel_chains = 4,
+  refresh = 500
+)
+
+# Note: test.stan requires to end with a blank line
+file <- file.path(getwd(), "f32.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+
+fit <- mdl$sample(
+  data = dat_list, 
+  seed = 123, 
+  chains = 4, 
+  parallel_chains = 4,
+  refresh = 500
+)
+
+fit$print()
+fit$sampler_diagnostics()
+fit$cmdstan_diagnose()
+
+mu_samples <- fit$draws(variables = "mu", format = "df")
+bayesplot::mcmc_trace(mu_samples)
+
+
