@@ -1,5 +1,3 @@
-options(mc.cores = parallel::detectCores())
-rstan::rstan_options(auto_write = TRUE)
 
 # Fluctuation phenomenon --------------------------------------------------
 
@@ -116,10 +114,6 @@ cov2cor(Sigma)
 # Learning about mu tells us almost nothing about sigma!
 # cor(samples[,1:2])
 
-#
-# Stop
-#
-
 # Multivariate sampling
 # (get > 4e3 samples)
 #
@@ -177,9 +171,9 @@ for(i in 1:N) {
         add=TRUE, col=col.alpha("black", .2)) 
 }
 
-w_seq <- seq(20,70)
-# Fit the model
+# Data 
 #
+w_seq <- seq(20,70)
 dat_list <- list(
                  h = d2$height,
                  w = d2$weight,
@@ -188,48 +182,80 @@ dat_list <- list(
                  W = length(w_seq)
 )
 
-mdl.stan <- "
-data {
-    int<lower=0> N;
-    int<lower=0> W;
-    vector[N] h;
-    vector[N] w;
-    vector[W] w_seq;
-}
-transformed data {
-    real wbar; 
-    wbar = mean(w);
-}
-parameters {
-   real alpha; 
-   real beta; 
-   real<lower=0> sigma; 
-}
-model {
-   h ~ normal(alpha + beta * (w - wbar), sigma);
-}
-generated quantities {
-vector[W] mu 
-    = alpha + beta * (w_seq-wbar);
-real h_tilde[N]
-    = normal_rng(alpha + beta * w, sigma);
-}
-"
-
-# NOTE: (w - mean(w)) boost the n° effective samples enormously!
-fit <- rstan::stan(model_code = mdl.stan, data = dat_list)
-rethinking::precis(fit, depth=2)
-samples <- rstan::extract(fit)
-N_samples <- length(samples$alpha)
-# Visualize
+# Definition 
 #
+fml <- file.path(getwd(), "stan", "m33.stan")
+mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
+fit <- mdl$sample(
+  data = dat_list, 
+  seed = 123, 
+  chains = 4, 
+  parallel_chains = 4,
+  refresh = 500
+)
+# Samples 
+#
+samples <- fit$draws(format="df")
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
+fit$summary()
+bayesplot::mcmc_trace(samples)
+# Alternatively with rstan
+stanfit <- rstan::read_stan_csv(fit$output_files())
+rstan::traceplot(stanfit)
+
+# Posterior line predictions
+calc_mu <- function(weight) samples$alpha + samples$beta*(weight-wbar)
+w_seq <- 20:70 
+wbar <- mean(d2$weight)
+# Posterior line prediction
+mu <- sapply(w_seq, calc_mu)
+# Posterior predictions
+N_samples <- nrow(samples)
+h_tilde <- rnorm(N_samples, mu, samples$sigma)
+# MAP
+mu_mean <- rowMeans(mu)
+# HPDI 
+mu_HPDI <- apply(mu, 2, rethinking::HPDI)
+
+#
+# STOP 2
+#
+
+#height HPDI 
+height_HPDI <- apply()
+
+# Visualize (Spaghetti plot)
+#
+N_samples <- nrow(samples)
 plot(d2$weight, d2$height, col="lightgrey")
 for(i in seq(N_samples)) {
-    curve(samples$alpha[i] + samples$beta[i]*(x - mean(d2$weight)), add=TRUE) 
+  curve(samples$alpha[i] + samples$beta[i]*(x - mean(d2$weight)), add=TRUE)
 }
+
+N_samples <- nrow(samples)
+plot(d2$weight, d2$height, col="lightgrey")
+for(i in seq(N_samples)) {
+  curve(samples$alpha[i] + samples$beta[i]*(x - mean(d2$weight)), add=TRUE)
+}
+
+
+plot(d2$weight, d2$height, col="lightgrey")
 # MAP line 
-curve(mean(samples$alpha) + mean(samples$beta)*(x - mean(d2$weight)), add=TRUE, 
-      col = "white") 
+lines( w_seq, mu_mean, col = "black" )
+# Posterior lines
+shade( mu_HPDI, w_seq )
+# MAP line 
+
+
+
+rethinking::shade(mu_HPDI, col="red")
+
+# Posterior Covmat
+round(cor(samples[,2:4]),digits=2)
 
 # Posterior distribution for the mean height 
 # ..of a 50kg Kung
@@ -290,5 +316,4 @@ fit$cmdstan_diagnose()
 
 mu_samples <- fit$draws(variables = "mu", format = "df")
 bayesplot::mcmc_trace(mu_samples)
-
 

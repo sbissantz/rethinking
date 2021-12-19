@@ -16,7 +16,7 @@ model {
    h ~ normal(alpha + beta * (w - wbar), sigma);
         alpha ~ normal(178, 20);
         beta ~ lognormal(0, 1);
-    sigma ~ exponential(1);
+   sigma ~ exponential(1);
 }
 generated quantities {
 // vector[W] mu 
