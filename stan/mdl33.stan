@@ -8,19 +8,18 @@ transformed data {
     wbar = mean(w);
 }
 parameters {
-   real alpha; 
-   real<lower=0> beta; 
+   real alpha, beta; 
    real<lower=0> sigma; 
 }
 model {
    h ~ normal(alpha + beta * (w - wbar), sigma);
-        alpha ~ normal(178, 20);
-        beta ~ lognormal(0, 1);
+   alpha ~ normal(0,0.1);
+   beta ~ normal(0,1);
    sigma ~ exponential(1);
 }
 generated quantities {
-// vector[W] mu 
-//    = alpha + beta * (w_seq-wbar);
-// real h_tilde[W]
-//    = normal_rng(alpha + beta * w_seq, sigma);
+vector[N] mu 
+    = alpha + beta * (w_seq-wbar);
+real h_tilde[N]
+    = normal_rng(alpha + beta * w, sigma);
 }

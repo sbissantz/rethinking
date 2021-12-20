@@ -30,6 +30,8 @@ plot(density(big))
 log.big <- replicate(N, log(prod(1 + runif(steps, 0, 0.5))))
 plot(density(log.big))
 
+# model -------------------------------------------------------------------
+
 # Data
 #
 library(rethinking)
@@ -65,16 +67,16 @@ dat_ls <- list(
                  N = length(d2$height),
                  h = d2$height
 )
-# Model mdl3_1
+# Model 
 #  h ~ normal(mu, sigma);
 #  mu ~ normal(170, 20);
 #  sigma ~ uniform(0, 50);
 
 # Note: test.stan requires to end with a blank line
-f31 <- file.path(getwd(), "m31.stan")
-m31 <- cmdstanr::cmdstan_model(f31, pedantic=TRUE)
+fml <- file.path(getwd(), "stan", "mdl31.stan")
+mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
 
-f31 <- m31$sample(
+fit <- mdl$sample(
   data = dat_ls, 
   seed = 123, 
   chains = 4, 
@@ -82,10 +84,13 @@ f31 <- m31$sample(
   refresh = 500
 )
 
-f31$summary()
-f31$cmdstan_diagnose()
-samples <- f31$draws(variables = c("mu", "sigma"), format = "df")
+fit$summary()
+fit$cmdstan_diagnose()
+samples <- fit$draws(variables = c("mu", "sigma"), format = "df")
 bayesplot::mcmc_trace(samples)
+# Alternatively with rstan
+stanfit <- rstan::read_stan_csv(fit$output_files())
+rstan::traceplot(stanfit)
 
 # Plot: Marginal posterior densities
 #
@@ -122,6 +127,8 @@ mean(samples$Sigma)
 (Sigma <- cov(samples[,1:2]))
 N <- 1e5
 MASS::mvrnorm(N, mu, Sigma)
+
+# model -------------------------------------------------------------------
 
 # Data example
 #
@@ -184,7 +191,7 @@ dat_list <- list(
 
 # Definition 
 #
-fml <- file.path(getwd(), "stan", "m33.stan")
+fml <- file.path(getwd(), "stan", "mdl32.stan")
 mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
 fit <- mdl$sample(
   data = dat_list, 
@@ -208,51 +215,44 @@ stanfit <- rstan::read_stan_csv(fit$output_files())
 rstan::traceplot(stanfit)
 
 # Posterior line predictions
-calc_mu <- function(weight) samples$alpha + samples$beta*(weight-wbar)
 w_seq <- 20:70 
 wbar <- mean(d2$weight)
-# Posterior line prediction
-mu <- sapply(w_seq, calc_mu)
-# Posterior predictions
 N_samples <- nrow(samples)
-h_tilde <- rnorm(N_samples, mu, samples$sigma)
+calc_mu <- function(weight) samples$alpha + samples$beta*(weight-wbar)
+# Posterior line prediction
+mu <- vapply(w_seq, calc_mu, double(N_samples))
+# Posterior predictions
+sigma <- samples$sigma
+sim_height <- function(weight) {
+  rnorm(N_samples,
+        mean=samples$alpha + samples$beta * (weight - wbar),
+        sd=samples$sigma)
+}
+h_tilde <- vapply(w_seq, sim_height, double(N_samples))
+
 # MAP
-mu_mean <- rowMeans(mu)
-# HPDI 
+mu_mean <- colMeans(mu)
+# mu's HPDI
 mu_HPDI <- apply(mu, 2, rethinking::HPDI)
-
-#
-# STOP 2
-#
-
-#height HPDI 
-height_HPDI <- apply()
+# h_tilde's HPDI
+h_HPDI <- apply(h_tilde, 2, rethinking::HPDI)
 
 # Visualize (Spaghetti plot)
 #
 N_samples <- nrow(samples)
 plot(d2$weight, d2$height, col="lightgrey")
 for(i in seq(N_samples)) {
-  curve(samples$alpha[i] + samples$beta[i]*(x - mean(d2$weight)), add=TRUE)
+  curve(samples$alpha[i] + samples$beta[i]*(x - wbar), add=TRUE)
 }
-
-N_samples <- nrow(samples)
-plot(d2$weight, d2$height, col="lightgrey")
-for(i in seq(N_samples)) {
-  curve(samples$alpha[i] + samples$beta[i]*(x - mean(d2$weight)), add=TRUE)
-}
-
-
-plot(d2$weight, d2$height, col="lightgrey")
+plot(d2$weight, d2$height, col=col.alpha(rangi2,"0.5"))
 # MAP line 
-lines( w_seq, mu_mean, col = "black" )
-# Posterior lines
-shade( mu_HPDI, w_seq )
-# MAP line 
-
-
-
-rethinking::shade(mu_HPDI, col="red")
+lines(w_seq, mu_mean)
+# High Posterior Density Intervals
+# Distribution of mu 
+rethinking::shade(mu_HPDI, w_seq)
+# High Posterior Density Intervals
+# Model expects to find 89% of actual hights within...
+rethinking::shade(h_HPDI, w_seq)
 
 # Posterior Covmat
 round(cor(samples[,2:4]),digits=2)
@@ -260,7 +260,9 @@ round(cor(samples[,2:4]),digits=2)
 # Posterior distribution for the mean height 
 # ..of a 50kg Kung
 #
-plot(density(samples$mu[,30]))
+# plot(density(samples$mu[,30]))
+plot(density(mu[,31]))
+plot(density(samples$"mu[31]"))
 
 # Posterior line predictions (mu)
 # for Kungs between 20-50kg
