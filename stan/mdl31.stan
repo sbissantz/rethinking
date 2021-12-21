@@ -6,11 +6,11 @@ data{
     real<lower=0> h[N];
 }
 parameters{
-   real mu; 
+   real<offset=178,multiplier=20> mu;
    real<lower=0> sigma; 
 }
 model{
     h ~ normal(mu, sigma);
-    mu ~ normal(170, 20);
+    mu ~ std_normal();
     sigma ~ exponential(1);
 }

@@ -122,8 +122,8 @@ cov2cor(Sigma)
 # Multivariate sampling
 # (get > 4e3 samples)
 #
-mean(samples$Sigma)
-(mu <- sapply(samples, mean)[-3])
+mean(samples$sigma)
+(mu <- sapply(samples, mean)[(1:2)])
 (Sigma <- cov(samples[,1:2]))
 N <- 1e5
 MASS::mvrnorm(N, mu, Sigma)
@@ -209,7 +209,7 @@ samples <- fit$draws(format="df")
 fit$cmdstan_diagnose()
 fit$cmdstan_summary()
 fit$summary()
-bayesplot::mcmc_trace(samples)
+# bayesplot::mcmc_trace(samples)
 # Alternatively with rstan
 stanfit <- rstan::read_stan_csv(fit$output_files())
 rstan::traceplot(stanfit)
@@ -271,13 +271,13 @@ plot(d2$weight, d2$height, col="lightblue")
 for(i in seq(w_seq)){
   points(w_seq, samples$mu[i,], pch=16)
 }
-mean.mu <- apply(samples$mu, 2, mean)
+mean.mu <- apply(mu, 2, mean)
 points(w_seq, mean.mu, pch=20, col="white", cex=.5)
 
 plot(d2$weight, d2$height, col="lightblue")
 # ASM: Same prob. mass at each tail 
-mean.mu <- apply(samples$mu, 2, mean)
-PI.mu <- apply(samples$mu, 2, rethinking::PI)
+mean.mu <- apply(mu, 2, mean)
+PI.mu <- apply(mu, 2, rethinking::PI)
 lines(w_seq, mean.mu)
 rethinking::shade(PI.mu, w_seq)
 
@@ -318,4 +318,3 @@ fit$cmdstan_diagnose()
 
 mu_samples <- fit$draws(variables = "mu", format = "df")
 bayesplot::mcmc_trace(mu_samples)
-
