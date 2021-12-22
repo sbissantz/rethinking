@@ -1,320 +1,279 @@
 
-# Fluctuation phenomenon --------------------------------------------------
+options(mc.cores = parallel::detectCores())
+rstan::rstan_options(auto_write = TRUE)
 
-# Normal by addition
-#
-N <- 1e3 ; steps <- 16
-pos <- replicate(N, sum(runif(steps, -1, 1)))
+# Generative process ------------------------------------------------------
 
-hist(pos)
-plot(density(pos))
+# Generative process
+N <- 100
+y <- rbinom(N, 1, prob=.73)
 
-# Normal by small multiplications
-#
-N <- 1e3 ; steps <- 12
-pos <- replicate(N, prod(1 + runif(steps, 0, 0.1)))
-hist(pos)
-plot(density(pos))
+# Model fitting -----------------------------------------------------------
 
-N <- 1e3 ; steps <- 12
-# Normal
-small <- replicate(N, prod(1 + runif(steps, 0, 0.01)))
-# Not Normal
-big <- replicate(N, prod(1 + runif(steps, 0, 0.5)))
-# Visualize
-plot(density(small)) 
-plot(density(big))
-
-# Normal by log multiplication
-#
-log.big <- replicate(N, log(prod(1 + runif(steps, 0, 0.5))))
-plot(density(log.big))
-
-# model -------------------------------------------------------------------
-
-# Data
-#
-library(rethinking)
-data(Howell1) ; d <- Howell1
-rethinking::precis(d)
-d2 <- d[d$age >18,]
-
-# Model
-# h ~ normal(mu, sigma)
-# mu ~ normal(178, 20) 
-# sigma ~ uniform(0, 50)
-
-# Priors
-#
-# Prior for mu
-curve( dnorm(x, 178, 20), from=100, to=250 )
-# Prior for sigma
-curve( dunif(x, 0, 50), from=-10, to=60 )
-
-# Prior predictive simulation
-#
-N <- 1e3
-# Prior for mu
-sample_mu <- rnorm(N, 178, 20) 
-# Prior for sigma
-sample_sigma <- runif(N, 0, 50) 
-# Joint prior
-prior_h <- rnorm(N, sample_mu, sample_sigma)
-# Visualize the joint prior
-plot(density(prior_h))
-
+# data list
 dat_ls <- list(
-                 N = length(d2$height),
-                 h = d2$height
-)
-# Model 
-#  h ~ normal(mu, sigma);
-#  mu ~ normal(170, 20);
-#  sigma ~ uniform(0, 50);
+               y = y,
+               N = N
+               )
 
-# Note: test.stan requires to end with a blank line
-fml <- file.path(getwd(), "stan", "mdl31.stan")
-mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
+model.stan <- "
+data{
+    int<lower=0> N;
+    int<lower=0, upper=1> y[N];
+}
+parameters{
+    real<lower=0, upper=1> p;
+}
+model{
+    y ~ bernoulli(p);
+    p ~ normal(.6, 0.1);
+}"
+fit <- rstan::stan(model_code = model.stan, data = dat_ls)
 
-fit <- mdl$sample(
-  data = dat_ls, 
-  seed = 123, 
-  chains = 4, 
-  parallel_chains = 4,
-  refresh = 500
-)
+# Inspection & Extraction -------------------------------------------------
 
-fit$summary()
-fit$cmdstan_diagnose()
-samples <- fit$draws(variables = c("mu", "sigma"), format = "df")
-bayesplot::mcmc_trace(samples)
-# Alternatively with rstan
-stanfit <- rstan::read_stan_csv(fit$output_files())
-rstan::traceplot(stanfit)
+print(fit)
+pairs(fit)
+rstan::traceplot(fit)
 
-# Plot: Marginal posterior densities
+samples <- rstan::extract(fit)$p
+# Sampling to summarize ---------------------------------------------------
+# 3.2
+
 #
-plot( density(samples$mu) )
-# Compare to a normal distribution 
-mu <- mean(samples$mu)
-sigma <- sd(samples$mu)
-curve(dnorm(x, mu, sigma), add=TRUE, lty=2)
-
-# Plot: Marginal posterior densities
+# Intervals of defined boundaries
 #
-plot( density(samples$sigma) )
-# Add a normal distribution 
-mu <- mean(samples$sigma)
-sigma <- sd(samples$sigma)
-curve(dnorm(x, mu, sigma), add=TRUE, lty=2)
 
-# Plot: Joint posterior distribution
+N_samples <- length(samples)
+# one boundary
+sum(samples < 0.722)/N_samples
+# two boundaries
+sum(samples > 0.71 & samples < 0.73 )/N_samples
+
+# Graph: Interval of defined boundaries
 #
-plot( samples$mu, samples$sigma, pch=20, cex=0.3)
+# Visualize the Posterior
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+# Add boundary
+boundary <- 0.722
+abline(v = boundary, lty=2)
+# Add boundaries
+boundaries <- c(0.71, 0.73)
+abline(v = boundaries, lty=6)
 
-# Posterior-Relations between parameters
+#
+# CI
+# Intervals of defined mass
+#
+mass <- 0.5
+quantile( samples, mass )
+
+# Percentile Interval
+#
+masses <- c(0.7, 0.8)
+quantile( samples, masses )
+
+# Graph: Interval of defined mass 
+#
+# Visualize the Posterior
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+# Add mass 
+mass <- 0.5
+qval <- quantile( samples, mass )
+abline(v = qval, lty=2)
+# Add masses 
+masses <- c(0.7, 0.8) #PI
+qvals <- quantile( samples, masses )
+abline(v = qvals, lty=6)
+
+#
+#
+# PI
+# Percentile interval
+#
+mass <- .9
+rethinking::PI(samples, prob=mass)
+
+#
+# HPDI
+# Highest posterior density interval
+#
+
+# For S3 class objects: corece
+rethinking::HPDI( as.vector(samples), prob=.9 )
+
+# Graph: HPDI 
+#
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+qvals <- rethinking::HPDI( as.vector(samples), prob=.9 )
+abline(v=qvals, lty=2)
+
+# Point estimate ----------------------------------------------------------
+
+# Posterior Mode (MAP)
+#
+rethinking::chainmode(samples)
 # 
-(Sigma <- cov(samples[,1:2]))
-cov2cor(Sigma)
-# Learning about mu tells us almost nothing about sigma!
-# cor(samples[,1:2])
+# barefoot
+# Idea: generate the density and find the max value
+dsamples <- density(samples)      
+# x: data from which the estimate is to be computed
+# y: the estimated desity values (>=0)
+dsamples$x[which.max((dsamples$y))]
 
-# Multivariate sampling
-# (get > 4e3 samples)
+# Posterior median
 #
-mean(samples$sigma)
-(mu <- sapply(samples, mean)[(1:2)])
-(Sigma <- cov(samples[,1:2]))
-N <- 1e5
-MASS::mvrnorm(N, mu, Sigma)
+mean(samples)
 
-# model -------------------------------------------------------------------
-
-# Data example
+# Posterior mean
 #
-library(rethinking)
-data(Howell1) ; d <- Howell1
-rethinking::precis(d)
-d2 <- d[d$age >18,]
-plot(d2$weight, d2$height)
+median(samples)
 
-# Linear model 
+# Visualize 
 #
-# h ~ normal(mu, sigma)
-#   mu_i = a + b(x_i - xbar) 
-#     a ~ normal(178, 20)
-#     b ~ normal(0, 10)
-#   sigma ~ uniform(0, 50)
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+  map <- rethinking::chainmode(samples)
+abline(v=map, lty=2)
+  pmean <- mean(samples)
+abline(v=pmean, lty=4)
+  pmedian <- median(samples)
+abline(v=pmedian, lty=6)
 
-# Prior implications
+# Loss function 
 #
-# alpha prior
-curve(dnorm(x, 178, 20), from=100, to=250)
-# beta prior
-curve(dnorm(x, 0, 10), from=-50, to=50)
-# sigma prior
-curve(dunif(x, 0, 50), from=-10, to=60)
 
-# log normal pripr
-curve(dlnorm(x, 0, 1), from=0, to=10, xlab="weight", ylab="height")
-# check the 95% percentile interval
-qv <- qlnorm(c(.5,.95), meanlog=0, sdlog=1)
-abline(v=qv, lty=2)
+# Absolute Loss 
+# ..with STAN samples
 
-# Prior predictive simulation
+d <- seq(0,1, length.out=length(samples))
+(loss <- sapply(d, function(d) sum(abs(d - samples)/sum(samples))))
+plot(d, loss, type="l")
+y <- min(loss) ; x <- d[which.min(loss)] 
+points(x,y, pch=20)
+text(x, y+0.1, paste0("(",round(x, digits = 2),",",round(y, digits = 2),")"))
+
+# Quadratic loss 
+# ..with STAN samples
+
+d <- seq(0,1, length.out=length(samples))
+(loss <- sapply(d, function(d) sum((d - samples)^2/sum(samples))))
+plot(d, loss, type="l")
+y <- min(loss) ; x <- d[which.min(loss)] 
+points(x,y, pch=20)
+text(x, y+0.1, paste0("(",round(x, digits = 2),",",round(y, digits = 2),")"))
+abline(v=median(samples), lty=2)
+abline(v=mean(samples), lty=3)
+
+# Sampling to simulate predictions ----------------------------------------
+# 3.3
+
+# Analytical solution
 #
-# mu 
-N <- 1e2
-a <- rnorm(N, 178, 20)
-# b <- rnorm(N, 0, 10)
-b <- rlnorm(N, 0, 1)
-x <- d2$weight ; y <- d2$height
-xbar <- mean(d2$weight) 
-plot(NULL, xlim=range(x), ylim=c(-100, 400),
-     xlab="Weight", ylab="Height")
-abline(h=c(0,272), lty = 2)
-for(i in 1:N) {
-  curve(a[i] + b[i]*(x-xbar), from=min(d2$weight)[1], to=max(d2$weight), 
-        add=TRUE, col=col.alpha("black", .2)) 
+dbinom( 0:2, size=2, prob=0.7)
+# 9% chance to observe w = 0
+# 42% chance to observe w = 1
+# 49% chance to observe w = 2
+
+# Simulated data 
+#
+N <- 1e4
+tosses <- 9 # globe tosses
+dummy_w <- rbinom(N, tosses, prob = 70/100)
+# Equal to `dbinom( 0:2, size=2, prob=0.7)`?
+table(dummy_w) / N
+
+# Visualize
+#
+# Percentage
+table(dummy_w) / N
+
+# Frequency table 
+ftbl_w <- table(dummy_w) 
+plot(ftbl_w, xlab="Dummy water Count (x/10)", ylab = "Frequency")
+# 7/10 guess for 70/100... pretty awesome!
+
+#
+# Understanding sampling distributions 
+#
+
+seq <- seq(-5, 5, length.out=100)
+# Density function
+plot(dnorm(seq, mean = 0, sd = 1))
+# Cumulative distribution function
+plot(pnorm(seq, mean = 0, sd = 1))
+
+plot(dbinom(0:12, size=10, prob=0.7),
+     xlab = "Number of water samples: x/10 tosses",
+     ylab = "Probability to observe n/10", xaxt = 'n')
+axis(side = 1, at=1:13, labels = 0:12)
+abline(v=11.5, lty=2)
+text(12.5, 0.1, "Impossible")
+  N <- 1e6 ; tosses <- 10
+  dummy_w <- rbinom(N, tosses, prob = 0.7)
+  x <- 1:11 ; y <- table(dummy) / N
+points(x, y, pch=3)
+# Awesome...
+
+#
+# Understanding the Posterior Predictive Distribution
+#
+
+# Posterior distribution
+#
+dsamples <- density(samples)
+plot(dsamples, main=NA)
+
+# A sampling distribution 
+p <- 0.6
+w <- rbinom(1e4, size=9, prob = p)
+
+# Sampling distributions
+#
+p_range <- seq(0.1,0.9,by=0.1)
+N <- 1e4
+gen_smpl_dstrb <- function(p, N) rbinom(N, size=9, prob=p )
+dummy_w <- vapply(p_range, gen_smpl_dstrb, N=N, FUN.VALUE = numeric(N))
+
+# Visualize sampling distributions
+#
+simpl_hist <- function(p) {
+   plot(table(dummy_w[,p]), main=paste0(p_range[p]))
+  
 }
+op <- par(no.readonly = TRUE)
+par(mfrow = c(3,3))
+  lapply(1:length(p_range), simpl_hist)
+par(op)
 
-# Data 
-#
-w_seq <- seq(20,70)
-dat_list <- list(
-                 h = d2$height,
-                 w = d2$weight,
-                 N = length(d2$height),
-                 w_seq = w_seq,
-                 W = length(w_seq)
-)
-
-# Definition 
-#
-fml <- file.path(getwd(), "stan", "mdl32.stan")
-mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
-fit <- mdl$sample(
-  data = dat_list, 
-  seed = 123, 
-  chains = 4, 
-  parallel_chains = 4,
-  refresh = 500
-)
-# Samples 
-#
-samples <- fit$draws(format="df")
-
-# Diagnostics
-#
-fit$cmdstan_diagnose()
-fit$cmdstan_summary()
-fit$summary()
-# bayesplot::mcmc_trace(samples)
-# Alternatively with rstan
-stanfit <- rstan::read_stan_csv(fit$output_files())
-rstan::traceplot(stanfit)
-
-# Posterior line predictions
-w_seq <- 20:70 
-wbar <- mean(d2$weight)
-N_samples <- nrow(samples)
-calc_mu <- function(weight) samples$alpha + samples$beta*(weight-wbar)
-# Posterior line prediction
-mu <- vapply(w_seq, calc_mu, double(N_samples))
-# Posterior predictions
-sigma <- samples$sigma
-sim_height <- function(weight) {
-  rnorm(N_samples,
-        mean=samples$alpha + samples$beta * (weight - wbar),
-        sd=samples$sigma)
-}
-h_tilde <- vapply(w_seq, sim_height, double(N_samples))
-
-# MAP
-mu_mean <- colMeans(mu)
-# mu's HPDI
-mu_HPDI <- apply(mu, 2, rethinking::HPDI)
-# h_tilde's HPDI
-h_HPDI <- apply(h_tilde, 2, rethinking::HPDI)
-
-# Visualize (Spaghetti plot)
-#
-N_samples <- nrow(samples)
-plot(d2$weight, d2$height, col="lightgrey")
-for(i in seq(N_samples)) {
-  curve(samples$alpha[i] + samples$beta[i]*(x - wbar), add=TRUE)
-}
-plot(d2$weight, d2$height, col=col.alpha(rangi2,"0.5"))
-# MAP line 
-lines(w_seq, mu_mean)
-# High Posterior Density Intervals
-# Distribution of mu 
-rethinking::shade(mu_HPDI, w_seq)
-# High Posterior Density Intervals
-# Model expects to find 89% of actual hights within...
-rethinking::shade(h_HPDI, w_seq)
-
-# Posterior Covmat
-round(cor(samples[,2:4]),digits=2)
-
-# Posterior distribution for the mean height 
-# ..of a 50kg Kung
-#
-# plot(density(samples$mu[,30]))
-plot(density(mu[,31]))
-plot(density(samples$"mu[31]"))
-
-# Posterior line predictions (mu)
-# for Kungs between 20-50kg
+# Sampling distribution 
+# ...for the posterior mean
+# predictive distribution -- posterior mean
 # 
-plot(d2$weight, d2$height, col="lightblue")
-for(i in seq(w_seq)){
-  points(w_seq, samples$mu[i,], pch=16)
-}
-mean.mu <- apply(mu, 2, mean)
-points(w_seq, mean.mu, pch=20, col="white", cex=.5)
+w_pm <- rbinom(1e4, size=9, prob = mean(samples))
+hist(w_pm)
 
-plot(d2$weight, d2$height, col="lightblue")
-# ASM: Same prob. mass at each tail 
-mean.mu <- apply(mu, 2, mean)
-PI.mu <- apply(mu, 2, rethinking::PI)
-lines(w_seq, mean.mu)
-rethinking::shade(PI.mu, w_seq)
+# TODO: Do it with a CI!
 
-# Posterior prediction
 #
+# PPD
+# Posterior predictive distribution
+# ...all samples from posterior
 
-# Model fitted ... but visualization is missing
-dat_list <- list(
-  y = rbinom(1e3, 1, .5),
-  N = 1e3 
-)
-# Note: test.stan requires to end with a blank line
-file <- file.path(getwd(), "test.stan")
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(
-  data = dat_list, 
-  seed = 123, 
-  chains = 4, 
-  parallel_chains = 4,
-  refresh = 500
-)
+# Note: If the 'prob' argument is a vector it gets recycled Why does it work?
+# because every sample is a conjecture about p. So if we sample sequences of
+# globe tosses where the probability to succeed in each try is a conjecture
 
-# Note: test.stan requires to end with a blank line
-file <- file.path(getwd(), "f32.stan")
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+w_ppd <- rbinom(1e4, size=9, prob = samples)
+hist(w_ppd, main="Posterior Predictive Distribution", 
+     xlab="number of water samples") 
 
-fit <- mdl$sample(
-  data = dat_list, 
-  seed = 123, 
-  chains = 4, 
-  parallel_chains = 4,
-  refresh = 500
-)
-
-fit$print()
-fit$sampler_diagnostics()
-fit$cmdstan_diagnose()
-
-mu_samples <- fit$draws(variables = "mu", format = "df")
-bayesplot::mcmc_trace(mu_samples)
+# Overconfidence tran
+# Comparing: PPD vs. PD -- Posterior mean
+#
+hist(w_pm)
+hist(w_ppd, add = TRUE, col="black", xlab="number of water samples")
+# Illusion: model seems more consistent with the data then it really it!
