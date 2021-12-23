@@ -318,19 +318,25 @@ fit$cmdstan_diagnose()
 mu_samples <- fit$draws(variables="mu", format="df")
 bayesplot::mcmc_trace(mu_samples)
 
-# model -------------------------------------------------------------------
+# mdl441 ------------------------------------------------------------------
 
 library(rethinking)
 data("Howell1")
 d <- Howell1
 plot(d$weight, d$height)
 
+# Data wrangling
+#
+w_s <- (d$weight-mean(d$weight))/sd(d$weight)
+w_s2 <- w_s^2
 dat_ls <- list(
   N = nrow(d),
-  w = d$weight,
-  h = d$height 
+  w_s = w_s,
+  w_s2 = w_s2,
+  h = d$height
 )
-file <- file.path(getwd(), "stan", "mdl44.stan")
+file <- file.path(getwd(), "stan", "mdl441.stan")
+# Second order polynomial
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
 fit <- mdl$sample(
   data = dat_ls,
@@ -339,15 +345,55 @@ fit <- mdl$sample(
 )
 fit$cmdstan_diagnose()
 samples <- fit$draws(format="df")
-mu_samples <- fit$draws(variables="mu", format="df")
-bayesplot::mcmc_trace(sample)
+# bayesplot::mcmc_trace(samples)
 fit$print()
 
-pat <- grep("mu", colnames(mu_samples))
-mu_mean <- apply(mu_samples[pat], 2, mean)
-mu_HPDI <- apply(mu_samples[pat], 2, rethinking::HPDI)
-plot(d$weight, d$height, col="lightgrey")
-lines(d$weight, mu_mean)
+# Posterior line predictions
+#
+calc_mu <- function(w_s, w_s2) {
+  with(samples, alpha + beta_1 * w_s + beta_2 * w_s2)
+}
+w_seq <- seq(-2,2,length.out=30)
+mu <- mapply(calc_mu, w_seq, w_seq^2) 
+# Posterior predictions
+#
+calc_h <- function(N, w_s, w_s2, sigma) {
+ rnorm(N,
+       mean=with(samples, alpha + beta_1 * w_s + beta_2 * w_s2),
+       sd=samples$sigma
+)}
+N_samples <- nrow(samples)
+h_tilde <- mapply(calc_h, N=N_samples, w_seq, w_seq^2)
+
+mu_mean <- apply(mu, 2, mean)
+mu_HPDI <- apply(mu, 2, rethinking::HPDI)
+h_HPDI <- apply(h_tilde, 2, rethinking::HPDI)
+
+plot(w_s, d$height, col="lightgrey")
+lines(w_seq, mu_mean)
+shade(mu_HPDI, w_seq)
+shade(h_HPDI, w_seq)
+
+# model 45 ----------------------------------------------------------------
+
+library(rethinking)
+data("Howell1")
+d <- Howell1
+
+d$w_s <- (d$weight - mean(d$weight))/ sd(d$weight)
+dat_ls <- list(
+  N = nrow(d),
+  w_s = d$w_s,
+  w_s2 = d$w_s^2,
+  w_s3 = d$w_s^3,
+  h = d$height
+)
+
+fml  <- file.path(getwd(), "stan", "mdl45.stan")
+mdl  <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
+fit <- mdl$sample(data = dat_ls)
 
 
-length(d$weight) == length(mu_mean)
+
+
+
