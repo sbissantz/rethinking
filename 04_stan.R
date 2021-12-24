@@ -432,11 +432,14 @@ lines(w_sseq, mu_mean)
 shade(mu_HPDI, w_sseq)
 shade(h_HPDI, w_sseq)
 
+# Splines --------------------------------------------------------------------- 
 
-
-
-
-
+library( rethinking )
+data( "cherry_blossoms" )
+d <- cherry_blossoms
+precis( d )
+# Visualize day of bloom across years
+plot(d$year, d$doy)
 
 
 
