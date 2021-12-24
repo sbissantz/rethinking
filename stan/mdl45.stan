@@ -20,3 +20,4 @@ model {
     b3 ~ normal(0,1);
   sigma ~ exponential(1);
 }
+
