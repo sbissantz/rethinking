@@ -380,6 +380,8 @@ library(rethinking)
 data("Howell1")
 d <- Howell1
 
+# Data wrangling
+#
 d$w_s <- (d$weight - mean(d$weight))/ sd(d$weight)
 dat_ls <- list(
   N = nrow(d),
@@ -388,10 +390,72 @@ dat_ls <- list(
   w_s3 = d$w_s^3,
   h = d$height
 )
-
+# Define, evaluate 6 fit
+#
 fml  <- file.path(getwd(), "stan", "mdl45.stan")
 mdl  <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
 fit <- mdl$sample(data = dat_ls)
+# Diagnostics
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
+# Posterior samples for the MCMC approx parameters
+#
+samples <- fit$draws(format="df")
+# Posterior line predictions
+#
+w_sseq <- seq(-2.2,2.2, length.out=50) 
+calc_mu <- function(w_s) {
+ samples$a + samples$b1*w_s + samples$b2*(w_s)^2 + samples$b3*(w_s)^3
+}
+mu <- sapply(w_sseq, calc_mu)
+mu_mean <- apply(mu, 2, mean)
+mu_HPDI <- apply(mu, 2, rethinking::HPDI)
+sim_h <- function(w_s) {
+  rnorm(n=nrow(samples),
+        mean=with(samples, a + b1*w_s + b2*(w_s)^2 + b3*(w_s)^3),
+        sd=samples$sigma
+  )
+}
+# Posterior predictions
+#
+h_tilde <- sapply(w_sseq, sim_h)
+h_HPDI <- apply(h_tilde, 2, rethinking::HPDI)
+# Visualize
+#
+plot(standardize(d$weight), d$height, col="lightgrey", xaxt="n",
+xlab="weight", ylab="height")
+# "Unstandardize" the predictor scale
+at <- seq(-2.2,2.2, by=.4)
+labels <- at * sd(d$weight) + mean(d$weight)
+axis( side=1, at=at, labels=round(labels,1) )
+lines(w_sseq, mu_mean)
+shade(mu_HPDI, w_sseq)
+shade(h_HPDI, w_sseq)
+
+# Splines --------------------------------------------------------------------- 
+
+library( rethinking )
+data( "cherry_blossoms" )
+d <- cherry_blossoms
+precis( d )
+# Visualize day of bloom across years
+plot(d$year, d$doy)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Spline ---------------------------------------------------------------------- 
 
