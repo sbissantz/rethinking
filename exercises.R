@@ -451,3 +451,27 @@ repeat{
     if(pi_diff[N] < 0.05 ) break
 }
 plot(seq(N), pi_diff[seq(N)])
+
+# 4M1 ---------------------------------------------------------------------
+
+# Prior Predictive Simulation (R)
+# y ~ normal(mu, sigma)
+# mu ~ normal(0,10)
+# sigma ~ exponential(1)
+N <- 1e4
+sample_mu <- rnorm(N,0,10)
+sample_sigma <- rexp(N, 1)
+sample_y <- rnorm(N, mean=sample_mu, sd=sample_sigma)
+plot(density(sample_y))
+
+# Prior predictive checks (Stan)
+# y ~ normal(mu, sigma)
+# mu ~ normal(0,10)
+# sigma ~ exponential(1)
+dat_ls <- list(N=1e4)
+file <- file.path(getwd(), "stan", "mdl4M1.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data = dat_ls, fixed_param = TRUE)
+fit$print()
+y_sim <- fit$draws(format = "matrix", variables = "y_sim")
+plot(density(y_sim))
