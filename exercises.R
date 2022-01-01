@@ -475,3 +475,48 @@ fit <- mdl$sample(data = dat_ls, fixed_param = TRUE)
 fit$print()
 y_sim <- fit$draws(format = "matrix", variables = "y_sim")
 plot(density(y_sim))
+
+# 4M2 ---------------------------------------------------------------------
+
+# PPS
+# alpha ~ normal( N, 150, 20 )
+# beta ~ normal( N, 0, 10 )
+
+N_students <- 50
+N_years <- 3
+
+# heights 
+# assuming no growth each year (e.g., adult students)
+height_t1 <- rnorm(N_students, mean=150, sd=20) 
+height_t2 <- height_t1[sample(N_students)] 
+height_t3 <- height_t2[sample(N_students)] 
+d <- rbind(cbind(1, height_t1) , cbind(2, height_t2) , cbind(3, height_t3))
+plot(d[,1] + rnorm(N_students * N_years, 0, 0.1), d[,2], xaxt="n", 
+     xlab="timepoint (t)", ylab="height (cm)", pch=20)
+axis(side=1, at = c(1,2,3))
+
+#
+#
+height <- rnorm(N_students*N_years, mean=150, sd=20)
+t <- sample(1:3, N_students*N_years, replace=TRUE)
+d <- cbind.data.frame(height=height, t=t)
+
+plot(height ~ t, data=d)
+
+N <- 1e4
+alpha <- rnorm(N,150,20)
+beta <- rnorm(N,0,10)
+
+plot(NULL, xlim=c(1,3), ylim=c(-50,300), xlab="timepoint (t)", ylab="height (cm)")
+abline(h=c(0,272), lty=2)
+for (i in 1:N) curve( alpha[i] + beta[i] * t )
+
+
+
+
+
+
+
+
+
+
