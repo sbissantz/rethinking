@@ -476,42 +476,100 @@ fit$print()
 y_sim <- fit$draws(format = "matrix", variables = "y_sim")
 plot(density(y_sim))
 
-# 4M2 ---------------------------------------------------------------------
+# 4M4 ---------------------------------------------------------------------
 
 # PPS
 # alpha ~ normal( N, 150, 20 )
 # beta ~ normal( N, 0, 10 )
 
-N_students <- 50
-N_years <- 3
-
-# heights 
-# assuming no growth each year (e.g., adult students)
-height_t1 <- rnorm(N_students, mean=150, sd=20) 
-height_t2 <- height_t1[sample(N_students)] 
-height_t3 <- height_t2[sample(N_students)] 
-d <- rbind(cbind(1, height_t1) , cbind(2, height_t2) , cbind(3, height_t3))
-plot(d[,1] + rnorm(N_students * N_years, 0, 0.1), d[,2], xaxt="n", 
-     xlab="timepoint (t)", ylab="height (cm)", pch=20)
-axis(side=1, at = c(1,2,3))
-
-#
-#
-height <- rnorm(N_students*N_years, mean=150, sd=20)
-t <- sample(1:3, N_students*N_years, replace=TRUE)
-d <- cbind.data.frame(height=height, t=t)
-
-plot(height ~ t, data=d)
-
-N <- 1e4
+N <- 1e2
+# Ren Keyu 221.03 cm (world largest teenager 14 yrs old)
 alpha <- rnorm(N,150,20)
-beta <- rnorm(N,0,10)
+curve(dnorm(x,150,20), from=0, to=300, xlab="height")
 
-plot(NULL, xlim=c(1,3), ylim=c(-50,300), xlab="timepoint (t)", ylab="height (cm)")
-abline(h=c(0,272), lty=2)
-for (i in 1:N) curve( alpha[i] + beta[i] * t )
+beta <- rnorm(N, mean = 0, sd = 10)
+curve(dlnorm(x,0,1.5), from=-2, to=10, xlab="timepoint", ylab="log height")
 
+plot(NULL, xlim=c(1,3), ylim=c(-50,300), 
+     xaxt="n", xlab="timepoint", ylab="height", pch=20)
+axis(side=1, at = 1:3)
+abline(h=c(0,221), lty=2)
+for (i in 1:N) curve( alpha[i] + beta[i] * x, add=TRUE )
 
+# 4M5 ---------------------------------------------------------------------
+
+N <- 1e2
+# Ren Keyu 221.03 cm (world largest teenager 14 yrs old)
+alpha <- rnorm(N,150,20)
+curve(dnorm(x,150,20), from=0, to=300, xlab="height")
+beta <- rlnorm(N, meanlog = 0, sdlog = 1.5)
+# Switched to a lognormal prior since students height increases every year.
+# Thus, there are no negative association between timepoints and heights.
+curve(dlnorm(x,0,1.5), from=-2, to=10, xlab="timepoint", ylab="log height")
+
+plot(NULL, xlim=c(1,3), ylim=c(-50,300), 
+     xaxt="n", xlab="timepoint", ylab="height", pch=20)
+axis(side=1, at = 1:3)
+abline(h=c(0,221), lty=2)
+for (i in 1:N) curve( alpha[i] + beta[i] * x, add=TRUE )
+
+# 4M6 ---------------------------------------------------------------------
+
+N <- 1e2
+# Ren Keyu 221.03 cm (world largest teenager 14 yrs old)
+alpha <- rnorm(N,150,20)
+curve(dnorm(x,150,20), from=0, to=300, xlab="height")
+beta <- rlnorm(N, meanlog = 0, sdlog = 1.5)
+curve(dlnorm(x,0,1.5), from=-2, to=10, xlab="timepoint", ylab="log height")
+
+plot(NULL, xlim=c(1,3), ylim=c(-50,300), 
+     xaxt="n", xlab="timepoint", ylab="height", pch=20)
+axis(side=1, at = 1:3)
+abline(h=c(0,221), lty=2)
+for (i in 1:N) curve( alpha[i] + beta[i] * x, add=TRUE )
+#
+# Sigma note: choose a uniform prior (instead of a exponential prior), because
+# we have information on the maxmimum value of deviation (64 cm)
+
+# 4M7 ---------------------------------------------------------------------
+
+library( rethinking )
+data( "Howell1" )
+d <- Howell1 ; d2 <- d[d$age >= 18,]
+dat_ls <- list(
+               N = nrow(d2),
+               w = d2$weight,
+               h = d2$height
+)
+
+# Definition 
+#
+fml_1 <- file.path(getwd(), "stan", "mdl32.stan")
+mdl_1 <- cmdstanr::cmdstan_model(fml_1, pedantic=TRUE)
+fit_1 <- mdl_1$sample(
+  data = dat_ls, 
+  seed = 123, 
+  chains = 4, 
+  parallel_chains = 4,
+  refresh = 500
+)
+
+fml_2 <- file.path(getwd(), "stan", "mdl4M7.stan")
+mdl_2 <- cmdstanr::cmdstan_model(fml_2, pedantic=TRUE)
+fit_2 <- mdl_2$sample(
+  data = dat_ls, 
+  seed = 123, 
+  chains = 4, 
+  parallel_chains = 4,
+  refresh = 500
+)
+
+# Diagnostics
+#
+fit_1$cmdstan_diagnose()
+# If we don't standardize the variables, we get ~600 divergent transitions!
+# Thus the we get a worse aproximation of the posterior..
+fit_2$cmdstan_diagnose()
 
 
 

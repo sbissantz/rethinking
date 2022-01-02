@@ -1,7 +1,8 @@
 data {
-    int<lower=0> N, W;
+    int<lower=0> N ;
+//    int<lower=0> W ;
     vector[N] h, w;
-    vector[W] w_seq;
+//    vector[W] w_seq;
 }
 transformed data {
     real wbar; 
@@ -19,8 +20,8 @@ model {
    sigma ~ exponential(1);
 }
 generated quantities {
-vector[W] mu 
-    = alpha + beta * (w_seq-wbar);
- real h_tilde[W]
-    = normal_rng(alpha + beta * w_seq, sigma);
+// vector[W] mu 
+//    = alpha + beta * (w_seq-wbar);
+// real h_tilde[W]
+//    = normal_rng(alpha + beta * w_seq, sigma);
 }
