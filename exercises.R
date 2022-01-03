@@ -571,9 +571,56 @@ fit_1$cmdstan_diagnose()
 # Thus the we get a worse aproximation of the posterior..
 fit_2$cmdstan_diagnose()
 
+# 4M8 ---------------------------------------------------------------------
 
+# Data wrangling
+library(rethinking)
+data("cherry_blossoms")
+d <- cherry_blossoms
+dcc <- d[complete.cases(d$doy), ]
 
+# Spline
+N_knots <- 100 
+# Evenly spaced quantile values
+probs <- seq(0,1,length.out=N_knots)
+knots <- quantile(dcc$year, probs) 
+# B-Spline Basis Matrix
+B <- splines::bs(dcc$year, knots = knots[-c(1,N_knots)],  degree=3, 
+                 intercept=TRUE)
 
+# Prepare a data list
+dat_ls <- list(
+  B = B,
+  N = nrow(dcc),
+  K = ncol(B),
+  D = dcc$doy
+)
+# Define & fit the model
+fml <- file.path(getwd(), "stan", "mdl4M8.stan")
+mdl <- cmdstanr::cmdstan_model(fml)
+fit <- mdl$sample(data=dat_ls)
+# Evaluate
+fit$cmdstan_diagnose()
+fit$print(variables="w")
+# Extract
+mu <- fit$draws(variables = "mu", format = "matrix")
+
+# Posterior line predictions 
+#
+mu_mean <- apply(mu, 2, mean)
+mu_HPDI <- apply(mu, 2, rethinking::HPDI)
+
+# Visualize
+#
+plot( dcc$year, dcc$doy, xlab="year", ylab="Day in year", 
+      col=col.alpha(rangi2, 0.3), pch=16 )
+lines(dcc$year, mu_mean, lwd=1.5)
+rethinking::shade(mu_HPDI, dcc$year, col=col.alpha("black", 0.5))
+# 
+# Decresing/incresing N_knots decreases/increases the wigglyness of the spline
+# N_knots = 50 vs. N_knots = 15
+# Narrowing/flatten the (sd) via the prior decreases/increases the wigglyness
+# w ~ normal(0,100) vs. w ~ normal(0,1)
 
 
 

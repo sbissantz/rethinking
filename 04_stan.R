@@ -510,4 +510,3 @@ lines(dcc$year, mu_mean, lwd=1.5)
 rethinking::shade(mu_HPDI, dcc$year, col=col.alpha("black", 0.5))
 
 
-

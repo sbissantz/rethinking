@@ -12,7 +12,7 @@ parameters{
 model{
   D ~ normal(B*w + alpha, sigma); //likelihood
   alpha ~ normal(100,10); // prior
-  w ~ normal(0,10); // prior
+  w ~ normal(0,1000); // prior
   sigma ~ exponential(1); // prior 
 }
 generated quantities{
