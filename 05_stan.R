@@ -102,22 +102,31 @@ fit$print(max_rows = 50)
 samples <- fit$draws(format = "matrix")
 mu <- fit$draws(variables="mu", format="matrix")
 
-# Visual posterior inference
+# Visual posterior line inference
 #
 mu.mean <- apply(mu, 2, mean)
 mu.hpdi <- apply(mu, 2, rethinking::HPDI)
 plot(NULL, xlim=c(-2,2), ylim=c(-2,2), xaxt="n", yaxt="n", 
      xlab="Marriage rate (%)", ylab="Divorce rate (%)", )
 points(d$M, d$D, pch=20, col="lightblue") 
-lbl_x <- round(sd(d$Marriage) * seq(-2,2), digits = 2)
-lbl_y <- round(sd(d$Divorce) * seq(-2,2), digits = 2)
+lbl_x <- round(sd(d$Marriage) * seq(-2,2), digits = 1)
+lbl_y <- round(sd(d$Divorce) * seq(-2,2), digits = 1)
 axis(side=1,at = seq(-2,2), labels = lbl_x ) 
 axis(side=2,at = seq(-2,2), labels = lbl_y) 
 lines(dat_ls$M_seq, mu.mean, lwd=2)
-rethinking::shade(mu.hpdi, dat_ls$M_seq)
+# for( i in seq(dat_ls$K) ) curve(samples[i,"a"] + samples[i,"b_M"] * x, add=TRUE)
+# for( i in seq(dat_ls$K) ) points(dat_ls$M_seq, mu[i,], type="l", 
+#                                  col=alpha("black",.3))
+for( i in seq(dat_ls$K) ) lines(dat_ls$M_seq, mu[i,], col=alpha("black",.4))
 
 
+dag_5.1 <- dagitty::dagitty('dag {
+A [pos="0,0"]
+M [pos="1,0"]
+D [pos="0.5,1"]
+D <- A -> M
+}')
+plot(dag_5.1)
 
-
-
+dagitty::impliedConditionalIndependencies(dag_5.1)
 
