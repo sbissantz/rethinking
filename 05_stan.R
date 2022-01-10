@@ -120,13 +120,92 @@ lines(dat_ls$M_seq, mu.mean, lwd=2)
 for( i in seq(dat_ls$K) ) lines(dat_ls$M_seq, mu[i,], col=alpha("black",.4))
 
 
-dag_5.1 <- dagitty::dagitty('dag {
+# 5.3 ---------------------------------------------------------------------
+
+# DAG
+#
+dag_5.3 <- dagitty::dagitty('dag {
 A [pos="0,0"]
 M [pos="1,0"]
 D [pos="0.5,1"]
 D <- A -> M
 }')
-plot(dag_5.1)
+plot(dag_5.3)
+# Testable implications
+dagitty::impliedConditionalIndependencies(dag_5.3)
 
-dagitty::impliedConditionalIndependencies(dag_5.1)
+# PPS
+# Note: Combine the prior from m5.1 & m5.2
+# D ~ normal(mu, sigma)
+# mu_i = alpha + beta_M*M + beta_A*A
+# alpha ~ normal(0,0.2)
+# beta_M ~ normal(0,0.5)
+# beta_A ~ normal(0,0.5)
+# sigma ~ exponential(1)
+
+# Data wrangling
+#
+library(rethinking)
+data("WaffleDivorce")
+d <- WaffleDivorce
+d$D <- scale(d$Divorce)
+d$M <- scale(d$Marriage)
+d$A <- scale(d$MedianAgeMarriage)
+X <- cbind( d$M, d$A)
+colnames(X) <- c("M", "A")
+N_seq <- 100
+X_seq <- replicate(2, seq(-3,3,length.out=N_seq))  
+
+# Reduced data list
+#
+dat_ls <- list(
+  N = nrow(d),
+  K = 2,
+  N_seq = nrow(X_seq),
+  D = as.numeric(d$D),
+  X = X,
+  X_seq=X_seq
+)
+dat_ls
+
+# Model
+#
+fml <- file.path(getwd(), "stan", "m53.stan")
+mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
+fit <- mdl$sample(data = dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format = "matrix")
+mu <- fit$draws(variables="mu", format = "matrix")
+alpha <- fit$draws(variables="alpha", format = "matrix")
+beta <- fit$draws(variables="beta", format = "matrix")
+beta_M <- beta[,1] ; beta_A <- beta[,2]
+
+# Visualize inference
+#
+# D ~ M | A
+plot(d$M, d$D, xlab="Marriage rate", ylab="Divorce rate", pch=20, 
+     col=alpha("lightblue", 1))
+for(i in seq(N_seq)){
+  curve(alpha[i] + beta_M[i] * x, from=min(d$M), to=max(d$M), add=TRUE, 
+        col=alpha("black", 0.3))
+}
+# D ~ A | M
+plot(d$A, d$D, xlab="Median Age at Marriage", ylab="Divorce rate", pch=20, 
+     col=alpha("lightblue", 1))
+for(i in seq(N_seq)){
+  curve(alpha[i] + beta_A[i] * x, from=min(d$A), to=max(d$A), add=TRUE, 
+        col=alpha("black", 0.3))
+}
+# Assuming the data are true, the effect of Mariage rate on divorce rate
+# vanishes conditioning on median age of marriage.
+
+
+
 
