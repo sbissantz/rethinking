@@ -183,9 +183,14 @@ fit$print()
 #
 samples <- fit$draws(format = "matrix")
 mu <- fit$draws(variables="mu", format = "matrix")
+sigma <- fit$draws(variables="sigma", format = "matrix")
 alpha <- fit$draws(variables="alpha", format = "matrix")
 beta <- fit$draws(variables="beta", format = "matrix")
 beta_M <- beta[,1] ; beta_A <- beta[,2]
+
+# Posterior Cormat 
+#
+cor(beta_M, beta_A)
 
 # Visualize inference
 #
@@ -205,6 +210,20 @@ for(i in seq(N_seq)){
 }
 # Assuming the data are true, the effect of Mariage rate on divorce rate
 # vanishes conditioning on median age of marriage.
+
+# Visual inference II 
+#
+plot(c(-1,1), c(-1,5), type="n", xlab="Relative plausibilty", ylab="Density")
+dplot <- function(par) {
+  d <- density(par)
+  lines(d)
+  abline(v=mean(par), lty=2)
+  text(mean(d$x)+0.1, max(d$y)+0.1, paste0(colnames(par)), cex = .5)
+}
+plot_ls <- list(alpha, beta_A, beta_M)
+lapply(plot_ls, dplot)
+
+
 
 
 
