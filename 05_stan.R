@@ -213,15 +213,17 @@ for(i in seq(N_seq)){
 
 # Visual inference II 
 #
-plot(c(-1,1), c(-1,5), type="n", xlab="Relative plausibilty", ylab="Density")
-dplot <- function(par) {
+# density plot for one parameter 
+dplot <- function(par,...) {
   d <- density(par)
-  lines(d)
+  lines(d,...)
   abline(v=mean(par), lty=2)
   text(mean(d$x)+0.1, max(d$y)+0.1, paste0(colnames(par)), cex = .5)
 }
+plot(NULL, xlim=c(-2,2), ylim=c(0,5), type="n", xlab="Relative plausibilty", 
+     ylab="Density",)
 plot_ls <- list(alpha, beta_A, beta_M)
-lapply(plot_ls, dplot)
+lapply(plot_ls, dplot, lwd=2)
 
 
 
