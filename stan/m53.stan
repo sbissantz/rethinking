@@ -1,10 +1,10 @@
 data {
   int<lower=0> N;
   int<lower=0> K;
-  int<lower=0> N_seq;
+  // int<lower=0> N_seq;
   vector[N] D; 
   matrix[N,K] X;
-  matrix[N_seq,K] X_seq;
+  // matrix[N_seq,K] X_seq;
 }
 parameters {
  real alpha; 
@@ -17,7 +17,7 @@ model {
   beta ~ normal(0, 0.5);
   sigma ~ exponential(1);
 }
-generated quantities {
-  vector[N_seq] mu =
-  X_seq*beta + alpha;
-}
+// generated quantities {
+//   vector[N_seq] mu =
+//   X_seq*beta + alpha;
+// }

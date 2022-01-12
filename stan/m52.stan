@@ -1,9 +1,9 @@
 data {
   int<lower=0> N;
-  int<lower=0> K;
+  // int<lower=0> K;
   vector[N] M;
   vector[N] D;
-  vector[K] M_seq;
+  // vector[K] M_seq;
 }
 parameters {
   real a;
@@ -16,6 +16,6 @@ model {
   b_M ~ normal(0,0.5);
   sigma ~ exponential(1);
 }
-generated quantities {
-  vector[K] mu = a + b_M*M_seq;  
-}
+// generated quantities {
+//   vector[K] mu = a + b_M*M_seq;  
+// }

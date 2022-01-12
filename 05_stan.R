@@ -214,19 +214,79 @@ for(i in seq(N_seq)){
 # Visual inference II 
 #
 # density plot for one parameter 
-dplot <- function(par,...) {
+dlayer <- function(par,...) {
   d <- density(par)
   lines(d,...)
   abline(v=mean(par), lty=2)
-  text(mean(d$x)+0.1, max(d$y)+0.1, paste0(colnames(par)), cex = .5)
+  text(mean(d$x)+0.05, max(d$y)+0.05, paste0(colnames(par)), cex = .5)
 }
 plot(NULL, xlim=c(-2,2), ylim=c(0,5), type="n", xlab="Relative plausibilty", 
      ylab="Density",)
 plot_ls <- list(alpha, beta_A, beta_M)
-lapply(plot_ls, dplot, lwd=2)
+lapply(plot_ls, dlayer, lwd=2)
+# Konklusion: Once we know the median age of marriage in a state there is no 
+# additional value of the marriage rate: D _||_ A | M
 
+# Fake data simulation 
+#
+dag_5.3 <- dagitty::dagitty('dag {
+A [pos="0,0"]
+M [pos="1,0"]
+D [pos="0.5,1"]
+D <- A -> M
+}')
+plot(dag_5.3)
+N <- 50
+# Simulate A (age_std)
+A <- rnorm(N)
+# Simulate M (marriage rate_std)
+M <- rnorm(N, -A)
+# Simulate N (divorce rate_std)
+D <- rnorm(N, A)
+dat_ls <- list(N=N, A=A, M=M, D=D)
 
+# Model definition 1
+#
+file <- file.path(getwd(), "stan", "mdl51.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit_m51 <- mdl$sample(data = dat_ls)
+# Samples 
+b_A_m51 <- fit_m51$draws(variables="b_A", format="matrix")
 
+# Model definition 2
+#
+file <- file.path(getwd(), "stan", "m52.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit_m52 <- mdl$sample(data = dat_ls)
+# Samples
+b_M_m52 <- fit_m52$draws(variables="b_M", format="matrix")
 
+# Model definition 3
+#
+file <- file.path(getwd(), "stan", "m53.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+dat_ls <- list(N=N, X=cbind(A,M), D=D, K=2)
+fit_m53 <- mdl$sample(data = dat_ls)
+samples <- fit_m53$draws(format="matrix")
+b_A_m53 <- samples[,3]
+b_M_m53 <- samples[,4]
+
+dlayer <- function(par,...) {
+  d <- density(par)
+  lines(d,...)
+  abline(v=mean(par), lty=2)
+  text(mean(d$x)+0.05, max(d$y)+0.05, paste0(colnames(par)), cex = .5)
+}
+plot(NULL, xlim=c(-2,2), ylim=c(0,5), type="n", xlab="Relative plausibilty", 
+     ylab="Density",)
+
+par(mfrow=c(2,1))
+plot_ls <- list(b_M_m52, b_A_m51)
+lapply(plot_ls, dlayer, lwd=2)
+
+plot_ls <- list(b_M_m53, b_A_m53)
+lapply(plot_ls, dlayer, lwd=2)
+
+par(mfrow=c(1,1))
 
 
