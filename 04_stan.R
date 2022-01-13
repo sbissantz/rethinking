@@ -178,6 +178,33 @@ for(i in 1:N) {
         add=TRUE, col=col.alpha("black", .2)) 
 }
 
+# Simulation based calibration
+#
+alpha <- 70
+beta <- 0.5
+sigma <- 1
+n_individuals <- 50
+# predictor 
+H <- runif(n_individuals, 130, 170)
+mu <- alpha + beta * (H - mean(H))
+# outcome 
+W <- rnorm(n_individuals, mu, sigma)
+# 
+calib_ls <- list(H=H, Hbar=mean(H), W=W, N=n_individuals)
+
+fml <- file.path(getwd(), "stan", "m32_calib.stan")
+mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
+fit <- mdl$sample(
+  data = calib_ls, 
+  seed = 123, 
+  chains = 4, 
+  parallel_chains = 4,
+  refresh = 500
+)
+# Samples 
+#
+fit$print()
+
 # Data 
 #
 w_seq <- seq(20,70)

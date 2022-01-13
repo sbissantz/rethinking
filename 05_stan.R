@@ -143,6 +143,13 @@ dagitty::impliedConditionalIndependencies(dag_5.3)
 # beta_A ~ normal(0,0.5)
 # sigma ~ exponential(1)
 
+
+# Simulation based calibration
+#
+
+
+
+
 # Data wrangling
 #
 library(rethinking)
@@ -240,7 +247,7 @@ N <- 50
 # Simulate A (age_std)
 A <- rnorm(N)
 # Simulate M (marriage rate_std)
-M <- rnorm(N, -A)
+M <- rnorm(N, A)
 # Simulate N (divorce rate_std)
 D <- rnorm(N, A)
 dat_ls <- list(N=N, A=A, M=M, D=D)
@@ -271,22 +278,30 @@ samples <- fit_m53$draws(format="matrix")
 b_A_m53 <- samples[,3]
 b_M_m53 <- samples[,4]
 
-dlayer <- function(par,...) {
+# Posterior inference parameter based
+#
+dlayer <- function(par,label=colnames(par),...) {
   d <- density(par)
   lines(d,...)
   abline(v=mean(par), lty=2)
-  text(mean(d$x)+0.05, max(d$y)+0.05, paste0(colnames(par)), cex = .5)
+  text(mean(d$x)+0.05, max(d$y)+0.05, paste0(label), cex = .5)
 }
 plot(NULL, xlim=c(-2,2), ylim=c(0,5), type="n", xlab="Relative plausibilty", 
      ylab="Density",)
+plot_ls <- list(b_M_m52, b_A_m51, b_M_m53, b_A_m53)
+mapply(dlayer, plot_ls, c("b_M_m52", "b_A_m51", "b_M_m53", "b_A_m53")) 
 
-par(mfrow=c(2,1))
-plot_ls <- list(b_M_m52, b_A_m51)
-lapply(plot_ls, dlayer, lwd=2)
 
-plot_ls <- list(b_M_m53, b_A_m53)
-lapply(plot_ls, dlayer, lwd=2)
 
-par(mfrow=c(1,1))
+
+
+
+
+
+
+
+
+
+
 
 
