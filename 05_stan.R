@@ -134,7 +134,8 @@ plot(dag_5.3)
 # Testable implications
 dagitty::impliedConditionalIndependencies(dag_5.3)
 
-# PPS
+# Prior predictive simulation
+#
 # Note: Combine the prior from m5.1 & m5.2
 # D ~ normal(mu, sigma)
 # mu_i = alpha + beta_M*M + beta_A*A
@@ -143,12 +144,31 @@ dagitty::impliedConditionalIndependencies(dag_5.3)
 # beta_A ~ normal(0,0.5)
 # sigma ~ exponential(1)
 
-
 # Simulation based calibration
 #
+# Generative model
+alpha <- 0.0                            
+beta_M <- 0.5
+beta_A <- 0.5
+sigma <- .5 
+# Simulated data 
+N <- 1e2
+M <- rnorm(N) 
+A <- rnorm(N)
+mu <- alpha + beta_M*M + beta_A*A
+D <- rnorm(N, mu, sigma)
 
+# Model validation
+#
+val_dat_ls <- list( N=N, K=2, X=cbind(M,A), D=D )
+fml <- file.path(getwd(), "stan", "m53.stan")
+mdl <- cmdstanr::cmdstan_model(fml, pedantic=TRUE)
+fit <- mdl$sample(data = val_dat_ls)
 
-
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
 
 # Data wrangling
 #
@@ -173,7 +193,6 @@ dat_ls <- list(
   X = X,
   X_seq=X_seq
 )
-dat_ls
 
 # Model
 #
@@ -291,17 +310,50 @@ plot(NULL, xlim=c(-2,2), ylim=c(0,5), type="n", xlab="Relative plausibilty",
 plot_ls <- list(b_M_m52, b_A_m51, b_M_m53, b_A_m53)
 mapply(dlayer, plot_ls, c("b_M_m52", "b_A_m51", "b_M_m53", "b_A_m53")) 
 
+#
+# Predictor residual plot
+#
 
+# Data wrangling
+#
+library(rethinking)
+data(WaffleDivorce)
+d <- WaffleDivorce
+# Standardization 
+d$M <- scale(d$Marriage)
+d$A <- scale(d$MedianAgeMarriage)
+# Reduced data list 
+dat_ls_1 <- list(M=as.numeric(d$M), A=as.numeric(d$A), N=nrow(d))
 
+# Model (5.4.1)
+# A ~ normal(mu, sigma)
+# mu_i = a + b_M * M_i
+# a ~ normal(0, 0.2)
+# b_M ~ normal(0, 0.5)
+# sigma ~ exponential(1)
 
+# Fit
+#
+file <- file.path( getwd(), "stan", "mdl_541.stan" )
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit_1 <- mdl$sample(dat_ls_1) 
 
+# Diagnostics
+#
+fit_1$cmdstan_diagnose()
+fit_1$print()
 
+# Samples
+#
+samples <- fit_1$draws(format = "matrix")
+alpha <- fit_1$draws(variables="alpha",format = "matrix")
+beta_M <- fit_1$draws(variables="beta_M",format = "matrix")
+mu <- fit_1$draws(variables="mu",format = "matrix")
+mu_mean <- apply(mu, 2, mean)
+mu_resid <- d$A - mu_mean
 
-
-
-
-
-
-
-
+plot(x=d$A, y=d$M)
+text(d$A, d$M+.2, labels = abbreviate(d$Location, minlength = 2))
+abline(a = mean(alpha), b=mean(beta_M))
+for(i in 1:50) lines(x=rep(d$A[i],2), y=c(mu_resid[i],d$M[i]))
 
