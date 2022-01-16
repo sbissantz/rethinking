@@ -311,7 +311,7 @@ plot_ls <- list(b_M_m52, b_A_m51, b_M_m53, b_A_m53)
 mapply(dlayer, plot_ls, c("b_M_m52", "b_A_m51", "b_M_m53", "b_A_m53")) 
 
 #
-# Predictor residual plot
+# Predictor residual plots
 #
 
 # Data wrangling
@@ -324,6 +324,9 @@ d$M <- scale(d$Marriage)
 d$A <- scale(d$MedianAgeMarriage)
 # Reduced data list 
 dat_ls_1 <- list(M=as.numeric(d$M), A=as.numeric(d$A), N=nrow(d))
+
+# Predictor residual plot (1)
+# A <- M
 
 # Model (5.4.1)
 # A ~ normal(mu, sigma)
@@ -348,12 +351,76 @@ fit_1$print()
 samples <- fit_1$draws(format = "matrix")
 alpha <- fit_1$draws(variables="alpha",format = "matrix")
 beta_M <- fit_1$draws(variables="beta_M",format = "matrix")
-mu <- fit_1$draws(variables="mu",format = "matrix")
-mu_mean <- apply(mu, 2, mean)
-mu_resid <- d$A - mu_mean
+mu_mean <- mean(alpha)+mean(beta_M) * d$M
 
-plot(x=d$A, y=d$M)
-text(d$A, d$M+.2, labels = abbreviate(d$Location, minlength = 2))
+plot(x=d$M, y=d$A, pch=20, xlab="Marriage rate (std)", ylab="Age at marriage (std)")
+text(x=d$M+0.05, y=d$A+0.05,  labels = abbreviate(d$Location, minlength = 2))
+text(1, 1, "observed > predicted: model underpredicts")
+text(-1, -1, "predicted > observed: model overpredicts")
 abline(a = mean(alpha), b=mean(beta_M))
-for(i in 1:50) lines(x=rep(d$A[i],2), y=c(mu_resid[i],d$M[i]))
+for(i in 1:50) lines(x=rep(d$M[i],2), y=c(d$A[i],mu_mean[i]),
+                     col=alpha("black", .3))
+
+# Predictor residual plot (2)
+# M <- A
+
+# Model (5.4.2)
+# M ~ normal(mu, sigma)
+# mu_i = alpha + beta_A*A_i  
+# alpha ~ normal(0,0.2)
+# beta_A ~ normal(0,0.5)
+# sigma ~ exponential(1)
+
+# Fit
+#
+file <- file.path( getwd(), "stan", "mdl_542.stan" )
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit_2 <- mdl$sample(dat_ls_1)
+
+# Diagnostics
+#
+fit_2$cmdstan_diagnose()
+fit_2$print()
+samples <- fit_2$draws(format="matrix")
+bayesplot::mcmc_trace(samples)
+
+# Samples
+#
+alpha <- samples[,"alpha"] 
+beta_A <- samples[,"beta_A"] 
+
+# Visualize
+#
+plot( x=d$A, y=d$M, xlab="Median Age at Marriage", ylab="Marriage rate", pch=20 )
+text( d$A+0.05, d$M+0.05, abbreviate(d$Location, 2) )
+abline( a=mean(alpha), b=mean(beta_A), lty=2 )
+text(1, 1, "observed > predicted: model underpredicts")
+text(-1, -1, "predicted > observed: model overpredicts")
+mu_mean <- mean(alpha) + mean(beta_A) * d$A
+for(i in seq(50)) { 
+  lines( rep(d$A[i], 2), c(d$M[i], mu_mean[i]), col=alpha("black", .3) )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
