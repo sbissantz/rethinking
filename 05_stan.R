@@ -322,6 +322,7 @@ d <- WaffleDivorce
 # Standardization 
 d$M <- scale(d$Marriage)
 d$A <- scale(d$MedianAgeMarriage)
+d$D <- scale(d$Divorce)
 # Reduced data list 
 dat_ls_1 <- list(M=as.numeric(d$M), A=as.numeric(d$A), N=nrow(d))
 
@@ -351,15 +352,29 @@ fit_1$print()
 samples <- fit_1$draws(format = "matrix")
 alpha <- fit_1$draws(variables="alpha",format = "matrix")
 beta_M <- fit_1$draws(variables="beta_M",format = "matrix")
-mu_mean <- mean(alpha)+mean(beta_M) * d$M
+mu_mean_line <- mean(alpha)+mean(beta_M) * d$M
 
+# Visualize (A ~ M)
+#
 plot(x=d$M, y=d$A, pch=20, xlab="Marriage rate (std)", ylab="Age at marriage (std)")
 text(x=d$M+0.05, y=d$A+0.05,  labels = abbreviate(d$Location, minlength = 2))
 text(1, 1, "observed > predicted: model underpredicts")
 text(-1, -1, "predicted > observed: model overpredicts")
 abline(a = mean(alpha), b=mean(beta_M))
-for(i in 1:50) lines(x=rep(d$M[i],2), y=c(d$A[i],mu_mean[i]),
+for(i in 1:50) lines(x=rep(d$M[i],2), y=c(d$A[i],mu_mean_line[i]),
                      col=alpha("black", .3))
+
+# Age at marriag residuals
+#
+calc_mu <- function( M ) {
+  alpha + beta_M * M
+}
+# Predicted median age 
+mu <- vapply( d$M, calc_mu, double(nrow(samples)) )
+mu_mean <-apply(mu, 2, mean)
+# Observed (A) - predicted (A)
+mu_resid_A <- d$A - mu_mean
+
 
 # Predictor residual plot (2)
 # M <- A
@@ -389,28 +404,75 @@ bayesplot::mcmc_trace(samples)
 alpha <- samples[,"alpha"] 
 beta_A <- samples[,"beta_A"] 
 
-# Visualize
+# Visualize (M ~ R)
 #
 plot( x=d$A, y=d$M, xlab="Median Age at Marriage", ylab="Marriage rate", pch=20 )
 text( d$A+0.05, d$M+0.05, abbreviate(d$Location, 2) )
 abline( a=mean(alpha), b=mean(beta_A), lty=2 )
 text(1, 1, "observed > predicted: model underpredicts")
 text(-1, -1, "predicted > observed: model overpredicts")
-mu_mean <- mean(alpha) + mean(beta_A) * d$A
+mu_mean_line <- mean(alpha) + mean(beta_A) * d$A
 for(i in seq(50)) { 
-  lines( rep(d$A[i], 2), c(d$M[i], mu_mean[i]), col=alpha("black", .3) )
+  lines( rep(d$A[i], 2), c(d$M[i], mu_mean_line[i]), col=alpha("black", .3) )
 }
 
+# Marriage rate residuals
+#
+calc_mu <- function( A ) {
+  alpha + beta_A * A
+}
+# Predicted median age 
+mu <- vapply( d$A, calc_mu, double(nrow(samples)) )
+mu_mean <-apply(mu, 2, mean)
+# Observed (A) - predicted (A)
+mu_resid_M <- d$M - mu_mean
 
+# Joint model (5.4.3)
+# D ~ normal(mu, sigma)
+# mu = alpha + beta_M * M + beta_A * A
+# alpha ~ normal(0, 0.2)
+# beta_A ~ normal(0, 0.5)
+# beta_M ~ normal(0, 0.5)
+# sigma ~ exponential(1)
 
+# Fitting 
+#
+file <- file.path( getwd(), "stan", "mdl_543.stan" )
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+dat_ls <- list(M=as.numeric(d$M), A=as.numeric(d$A), D=as.numeric(d$D),
+                 N=nrow(d))
+fit <- mdl$sample(data=dat_ls)
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+samples <- fit$draws(format="matrix")
+bayesplot::mcmc_trace(samples)
 
+# Samples
+#
+alpha <- samples[,"alpha"] 
+beta_A <- samples[,"beta_A"] 
+beta_M <- samples[,"beta_M"] 
 
+par(mfrow=c(1,2))
+# Predictor residual plots (D ~ A_resid)
+#
+plot(d$D ~ mu_resid_M, ylab="Divorce rate (std)", xlab="Age at Marriage residuals", 
+     pch=20, col="lightblue")
+abline(v=0, lty=2)
+abline(a = mean(alpha), b=mean(beta_M), lwd=2)
+for(i in 1:100) abline(a = alpha[i], b=beta_M[i], col=alpha("black", 0.3))
 
-
-
-
-
+# Predictor residual plot (D ~ M_resid)
+#
+plot(d$D ~ mu_resid_A, ylab="Divorce rate (std)", xlab="Marriage rate residuals", 
+     pch=20, col="lightblue")
+abline(v=0, lty=2)
+abline(a = mean(alpha), b=mean(beta_A), lwd=2)
+for(i in 1:100) abline(a = alpha[i], b=beta_A[i], col=alpha("black", 0.3))
+par(mfrow=c(1,1))
 
 
 
