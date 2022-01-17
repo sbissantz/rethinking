@@ -36,7 +36,7 @@ dat_ls <- list(
 
 # Model
 #
-file_path <- file.path(getwd(), "stan", "mdl51.stan")
+file_path <- file.path(getwd(), "stan", "mdl_51.stan")
 fml <- cmdstanr::cmdstan_model(file_path, pedantic=TRUE)
 fit <- fml$sample(data = dat_ls)
 fit$cmdstan_diagnose()
@@ -186,12 +186,12 @@ X_seq <- replicate(2, seq(-3,3,length.out=N_seq))
 # Reduced data list
 #
 dat_ls <- list(
-  N = nrow(d),
-  K = 2,
-  N_seq = nrow(X_seq),
-  D = as.numeric(d$D),
-  X = X,
-  X_seq=X_seq
+N = nrow(d),
+K = 2,
+N_seq = nrow(X_seq),
+D = as.numeric(d$D),
+X = X,
+X_seq=X_seq
 )
 
 # Model
@@ -273,7 +273,7 @@ dat_ls <- list(N=N, A=A, M=M, D=D)
 
 # Model definition 1
 #
-file <- file.path(getwd(), "stan", "mdl51.stan")
+file <- file.path(getwd(), "stan", "mdl_51.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit_m51 <- mdl$sample(data = dat_ls)
 # Samples 
@@ -281,7 +281,7 @@ b_A_m51 <- fit_m51$draws(variables="b_A", format="matrix")
 
 # Model definition 2
 #
-file <- file.path(getwd(), "stan", "m52.stan")
+file <- file.path(getwd(), "stan", "mdl_52.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit_m52 <- mdl$sample(data = dat_ls)
 # Samples
@@ -289,7 +289,7 @@ b_M_m52 <- fit_m52$draws(variables="b_M", format="matrix")
 
 # Model definition 3
 #
-file <- file.path(getwd(), "stan", "m53.stan")
+file <- file.path(getwd(), "stan", "mdl_53.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 dat_ls <- list(N=N, X=cbind(A,M), D=D, K=2)
 fit_m53 <- mdl$sample(data = dat_ls)
@@ -474,15 +474,71 @@ abline(a = mean(alpha), b=mean(beta_A), lwd=2)
 for(i in 1:100) abline(a = alpha[i], b=beta_A[i], col=alpha("black", 0.3))
 par(mfrow=c(1,1))
 
+#
+# Posterior predictive plots
+#
 
+# Data wrangling
+#
+library(rethinking)
+data("WaffleDivorce")
+d <- WaffleDivorce
+# Standardization 
+d$M <- scale(d$Marriage)
+d$A <- scale(d$MedianAgeMarriage)
+d$D <- scale(d$Divorce)
+# Reduced data list 
+dat_ls <- list(N=nrow(d), K=2, D=as.numeric(d$D), X=cbind(as.numeric(d$A), 
+                                                          M=as.numeric(d$M)))
 
+# Model fitting
+#
+file <- file.path( getwd(), "stan", "mdl_53_pp.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample( data = dat_ls )
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
 
+# Samples
+#
+mu <- fit$draws(variables="mu", format="matrix")
+D_tilde <- fit$draws(variables="D_tilde", format="matrix")
 
+# Parameter preparation
+#
+mu_mean <- apply(mu, 2, mean)
+mu_HPDI <- apply(mu, 2, rethinking::HPDI)
+D_tilde_HPDI <- apply(D_tilde, 2, rethinking::HPDI)
 
+#
+#
+plot(mu_mean ~ d$D, ylab="Predicted divorce", xlab="Observed divorce", 
+     pch=20, col="lightblue")
+abline(a = 0, b=1, lty=2)  
+# Posterior line uncertainty 
+for (i in seq(1:nrow(d))) lines( rep(d$D[i], 2), mu_HPDI[,i], col=alpha("black", 0.7))
+# Posterior uncertainty 
+for (i in seq(1:nrow(d))) lines( rep(d$D[i], 2), D_tilde_HPDI[,i], col=alpha("black", 0.3))
+# Identify some states
+# identify(d$D, mu_mean, labels = d$Loc) 
 
-
-
-
-
-
+sim_spur_cor_data <- function(N=1e3, seed=NULL) {
+  if(!is.null(seed)) { 
+    set.seed(seed)
+  }
+ x_real <- rnorm(N) 
+ x_spur <- rnorm(N, x_real) 
+ y <- rnorm(N, x_real)
+ msg <- "
+ Functional relationsships:
+ x_real
+ x_spur = f(x_real)
+ y = f(x_real)
+ "
+ message(msg)
+ cbind.data.frame(x_real, x_spur, y)
+}
+data <- sim_spur_cor_data(N=1e3, seed=123)
