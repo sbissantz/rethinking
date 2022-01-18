@@ -513,7 +513,7 @@ mu_mean <- apply(mu, 2, mean)
 mu_HPDI <- apply(mu, 2, rethinking::HPDI)
 D_tilde_HPDI <- apply(D_tilde, 2, rethinking::HPDI)
 
-#
+# Posterior predictive plots
 #
 plot(mu_mean ~ d$D, ylab="Predicted divorce", xlab="Observed divorce", 
      pch=20, col="lightblue")
@@ -525,20 +525,7 @@ for (i in seq(1:nrow(d))) lines( rep(d$D[i], 2), D_tilde_HPDI[,i], col=alpha("bl
 # Identify some states
 # identify(d$D, mu_mean, labels = d$Loc) 
 
-sim_spur_cor_data <- function(N=1e3, seed=NULL) {
-  if(!is.null(seed)) { 
-    set.seed(seed)
-  }
- x_real <- rnorm(N) 
- x_spur <- rnorm(N, x_real) 
- y <- rnorm(N, x_real)
- msg <- "
- Functional relationsships:
- x_real
- x_spur = f(x_real)
- y = f(x_real)
- "
- message(msg)
- cbind.data.frame(x_real, x_spur, y)
-}
-data <- sim_spur_cor_data(N=1e3, seed=123)
+
+
+
+
