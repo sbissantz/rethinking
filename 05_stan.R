@@ -585,27 +585,28 @@ D_tilde <- fit$draws(variables="D_tilde",format="matrix")
 M_tilde <- fit$draws(variables="M_tilde",format="matrix")
 D_tilde_A0 <- fit$draws(variables="D_tilde_A0",format="matrix")
 
+par(mfrow=c(3,1))
 # Total causal effect of A on D
 plot( c(-2,2), c(-2,2), type="n", xlab="Manipulated A", ylab="Counterfactual D")
 title("Total causal effect of A on D")
 mtext("A on D & A on M on D")
 lines(s, colMeans(D_tilde), pch=20, lwd=2)
 for (i in seq(s)) {
-  lines(s, D_tilde[i,], pch=20, col=alpha("black", 0.1))
+  lines(s, D_tilde[i,], pch=20, col=alpha("black", 0.2))
 }
 # Direct causal effect of A on D
 plot( c(-2,2), c(-2,2), type="n", xlab="Manipulated A", ylab="Counterfactual M")
 title("Direct causal effect of A on D")
 lines(s, colMeans(M_tilde), pch=20, lwd=2)
 for (i in seq(s)) {
-  lines(s, D_tilde[i,], pch=20, col=alpha("black", 0.1))
+  lines(s, D_tilde[i,], pch=20, col=alpha("black", 0.2))
 }
 # Total causal effect of M on D
 plot( c(-2,2), c(-2,2), type="n", xlab="Manipulated M", ylab="Counterfactual D")
 title("Total causal effect of M on D")
 lines(s, colMeans(D_tilde_A0), pch=20, lwd=2)
 for (i in seq(s)) {
-  lines(s, D_tilde_A0[i,], pch=20, col=alpha("black", 0.1))
+  lines(s, D_tilde_A0[i,], pch=20, col=alpha("black", 0.2))
 }
 
 
