@@ -290,23 +290,23 @@ b_M_m52 <- fit_m52$draws(variables="b_M", format="matrix")
 # Model definition 3
 #
 file <- file.path(getwd(), "stan", "mdl_53.stan")
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-dat_ls <- list(N=N, X=cbind(A,M), D=D, K=2)
+mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
+dat_ls <- list(N = N, X = cbind(A, M), D = D, K = 2)
 fit_m53 <- mdl$sample(data = dat_ls)
-samples <- fit_m53$draws(format="matrix")
+samples <- fit_m53$draws(format = "matrix")
 b_A_m53 <- samples[,3]
 b_M_m53 <- samples[,4]
 
 # Posterior inference parameter based
 #
-dlayer <- function(par,label=colnames(par),...) {
+dlayer <- function(par, label = colnames(par), ...) {
   d <- density(par)
   lines(d,...)
-  abline(v=mean(par), lty=2)
-  text(mean(d$x)+0.05, max(d$y)+0.05, paste0(label), cex = .5)
+  abline(v = mean(par), lty = 2)
+  text(mean(d$x) + 0.05, max(d$y) + 0.05, paste0(label), cex = .5)
 }
-plot(NULL, xlim=c(-2,2), ylim=c(0,5), type="n", xlab="Relative plausibilty", 
-     ylab="Density",)
+plot(NULL, xlim = c(-2,2), ylim = c(0,5), type = "n", 
+     xlab = "Relative plausibilty",  ylab = "Density",)
 plot_ls <- list(b_M_m52, b_A_m51, b_M_m53, b_A_m53)
 mapply(dlayer, plot_ls, c("b_M_m52", "b_A_m51", "b_M_m53", "b_A_m53")) 
 
@@ -504,8 +504,8 @@ fit$print()
 
 # Samples
 #
-mu <- fit$draws(variables="mu", format="matrix")
-D_tilde <- fit$draws(variables="D_tilde", format="matrix")
+mu <- fit$draws(variables = "mu", format = "matrix")
+D_tilde <- fit$draws(variables = "D_tilde", format = "matrix")
 
 # Parameter preparation
 #
@@ -515,17 +515,97 @@ D_tilde_HPDI <- apply(D_tilde, 2, rethinking::HPDI)
 
 # Posterior predictive plots
 #
-plot(mu_mean ~ d$D, ylab="Predicted divorce", xlab="Observed divorce", 
-     pch=20, col="lightblue")
-abline(a = 0, b=1, lty=2)  
+plot(mu_mean ~ d$D, ylab = "Predicted divorce", xlab = "Observed divorce", 
+     pch = 20, col = "lightblue")
+abline(a = 0, b = 1, lty = 2)  
 # Posterior line uncertainty 
-for (i in seq(1:nrow(d))) lines( rep(d$D[i], 2), mu_HPDI[,i], col=alpha("black", 0.7))
+for (i in seq(1:nrow(d))) lines(rep(d$D[i], 2), mu_HPDI[, i], 
+                                 col = alpha("black", 0.7))
 # Posterior uncertainty 
-for (i in seq(1:nrow(d))) lines( rep(d$D[i], 2), D_tilde_HPDI[,i], col=alpha("black", 0.3))
+for (i in seq(1:nrow(d))) lines(rep(d$D[i], 2), D_tilde_HPDI[,i], 
+                                 col = alpha("black", 0.3))
 # Identify some states
 # identify(d$D, mu_mean, labels = d$Loc) 
 
+# Counterfactual plots
+#
+# Assuming the dag... 
+dag <- dagitty::dagitty('dag{
+A [pos="0,0"]
+M [pos="1,0"]
+D [pos="0.5,01"]
+A -> D <- M
+A -> M 
+                        }')
+plot(dag)
 
+# Causal System 
+# (conditional on the DAG)
+# Stat model 1
+# D ~ normal(mu, sigma)
+# mu_i = a + b_AD*A + b_MD*M 
+# a ~ normal(0,0.2)
+# b_AD ~ normal(0,0.5)
+# b_MD ~ normal(0,0.5)
+# sigma ~ exponential(1)
+# Stat model 2
+# M ~ normal(nu, tau)
+# nu = k + b_AM*A
+# tau ~ exponential(1)
 
+# Data wrangling
+#
+library(rethinking)
+data("WaffleDivorce")
+d <- WaffleDivorce
+d$D <- scale(d$Divorce)
+d$A <- scale(d$MedianAgeMarriage)
+d$M <- scale(d$Marriage)
+N = nrow(d)
+s <- seq(-2,2, length.out=N)
+# Reduced data list
+dat_ls <- list(
+  D=as.numeric(d$D),  A=as.numeric(d$A),  M=as.numeric(d$M), 
+  A_seq=as.numeric(s),  M_seq=as.numeric(s), N = N)
+
+# Fitting
+#
+fml <- file.path(getwd(), "stan", "sys_53.stan")
+sys <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- sys$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+D_tilde <- fit$draws(variables="D_tilde",format="matrix")
+M_tilde <- fit$draws(variables="M_tilde",format="matrix")
+D_tilde_A0 <- fit$draws(variables="D_tilde_A0",format="matrix")
+
+# Total causal effect of A on D
+plot( c(-2,2), c(-2,2), type="n", xlab="Manipulated A", ylab="Counterfactual D")
+title("Total causal effect of A on D")
+mtext("A on D & A on M on D")
+lines(s, colMeans(D_tilde), pch=20, lwd=2)
+for (i in seq(s)) {
+  lines(s, D_tilde[i,], pch=20, col=alpha("black", 0.1))
+}
+# Direct causal effect of A on D
+plot( c(-2,2), c(-2,2), type="n", xlab="Manipulated A", ylab="Counterfactual M")
+title("Direct causal effect of A on D")
+lines(s, colMeans(M_tilde), pch=20, lwd=2)
+for (i in seq(s)) {
+  lines(s, D_tilde[i,], pch=20, col=alpha("black", 0.1))
+}
+# Total causal effect of M on D
+plot( c(-2,2), c(-2,2), type="n", xlab="Manipulated M", ylab="Counterfactual D")
+title("Total causal effect of M on D")
+lines(s, colMeans(D_tilde_A0), pch=20, lwd=2)
+for (i in seq(s)) {
+  lines(s, D_tilde_A0[i,], pch=20, col=alpha("black", 0.1))
+}
 
 
