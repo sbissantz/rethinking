@@ -609,4 +609,43 @@ for (i in seq(s)) {
   lines(s, D_tilde_A0[i,], pch=20, col=alpha("black", 0.2))
 }
 
+#
+# Another example to understand the concept
+#
 
+# DAG
+#
+dag <- dagitty::dagitty('dag{
+H [pos="0,0"]
+W [pos="0.5,0"]
+S [pos="0,1"]
+S -> H -> W
+S -> W
+}
+                        ')
+plot(dag)
+
+# https://stackoverflow.com/questions/29183577/how-to-represent-a-categorical-predictor-rstan
+
+# Simulate data 
+# S (sex) 
+# H (height) = f(S)
+# W (weight) = f(S,W)
+N <- 30
+S <- sample(c(1,2), N, replace = TRUE)
+H <- rnorm(N, S) 
+W <- rnorm(N, H+S)
+
+# Data wrangling
+#
+dat_ls = list(N=N, J=1:2, S=S, W=W)
+
+
+# Model
+#
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_exk_1.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(dat_ls)
