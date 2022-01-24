@@ -10,10 +10,10 @@ parameters {
 }
 model { 
     W ~ normal( alpha[S], sigma );
-    alpha[S] ~ uniform(60,10) ;
-    sigma ~ uniform(0,10);
+    alpha ~ normal(0,0.5);
+    sigma ~ exponential(1);
 }
 generated quantities {
-    real alpha_tilde[N] =
+    real W_tilde[N,K] =
     normal_rng(alpha[S], sigma);
 }

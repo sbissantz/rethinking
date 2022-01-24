@@ -46,25 +46,40 @@ d$H <- d$height
 # mu_i = alpha_S[i]
 # sigma ~ exponential(1)
 
+# Data list
+#
+dat_ls <- list(N=nrow(d), K=2, W=d$W, S=d$S)
+
 # Fitting
 #
-
 file <- file.path( getwd(), "stan", "mdl_1_sim_intervent.stan" )
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample
+fit <- mdl$sample(dat_ls)
 
+# Diagnostics
 #
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
 #
+samples <- fit$draws(format="matrix")
 
+# Contrast distribution (mean weight)
+#
+mu_cont <- samples[,"alpha[1]"] - samples[,"alpha[2]"]
+# Causal contrast in means (men, women)
+plot(density(mu_cont))
 
+# Contrast distribution (predicted weight) 
+# (Pointwise differences in PPDs)
+#
+W_cont <-  samples[,"W_tilde[1]"] - samples[,"W_tilde[2]"]
+plot(density(samples[,"W_tilde[1]"]))
+plot(density(samples[,"W_tilde[2]"]))
+plot(density(W_cont))
 
-
-
-
-
-
-
-
-
-
-
+# Proportion above zero
+sum(W_cont > 0) / nrow(samples) 
+# Proportion below zero
+sum(W_cont < 0) / nrow(samples) 
