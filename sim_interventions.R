@@ -49,7 +49,6 @@ d$H <- d$height
 # Data list
 #
 dat_ls <- list(N=nrow(d), K=2, W=d$W, S=d$S)
-
 # Fitting
 #
 file <- file.path( getwd(), "stan", "mdl_1_sim_intervent.stan" )
@@ -74,10 +73,6 @@ plot(density(mu_cont))
 # Contrast distribution (predicted weight) 
 # (Pointwise differences in PPDs)
 #
-W_cont <-  samples[,"W_tilde[1]"] - samples[,"W_tilde[2]"]
-plot(density(samples[,"W_tilde[1]"]))
-plot(density(samples[,"W_tilde[2]"]))
-plot(density(W_cont))
 
 # Proportion above zero
 sum(W_cont > 0) / nrow(samples) 
