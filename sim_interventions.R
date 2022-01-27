@@ -53,8 +53,8 @@ abline(h=c(mean(d$W[d$S==2])))
 
 # Data list
 #
-dat_ls <- list(N=nrow(d), K=2, W=as.numeric(d$W), S=d$S) 
-# dat_ls <- list(N=nrow(d), K=2, W=as.numeric(d$W, S=d$S, X=rep(0, nrow(d)))
+dat_ls <- list(N=nrow(d), K=2, W=as.numeric(d$W), S=as.integer(d$S))
+
 # Fitting
 #
 file <- file.path( getwd(), "stan", "mdl_1_sim_intervent.stan" )
@@ -70,9 +70,13 @@ fit$print()
 #
 samples <- fit$draws(format="matrix")
 
+# Posterior correlation
+#
+cor(samples)
+
 # Contrast distribution (mean weight)
-# Note: + because alpha|1] > 0
-mu_cont <- samples[,"alpha_S[2]"] + samples[,"alpha_S[1]"]
+# Note: "+" since alpha|1] > 0
+mu_cont <- samples[,"alpha[2]"] + samples[,"alpha[1]"]
 
 # Causal contrast in means (men, women)
 plot(density(mu_cont))
@@ -81,16 +85,82 @@ plot(density(mu_cont))
 # (samplewise differences in PPDs)
 #
 N <- 1e4
-W_tilde_1 <- rnorm(N, samples[,"alpha_S[1]"], samples[,"sigma"])
-W_tilde_2 <- rnorm(N, samples[,"alpha_S[2]"], samples[,"sigma"])
-dens(W_tilde_1, col="red") ; dens(W_tilde_2, col="blue", add=TRUE)
-abline(v = colMeans(samples[,"alpha_S[1]"]), lty=2)
-abline(v = colMeans(samples[,"alpha_S[2]"]), lty=2)
+W_tilde_1 <- rnorm(N, samples[,"alpha[1]"], samples[,"sigma"])
+W_tilde_2 <- rnorm(N, samples[,"alpha[2]"], samples[,"sigma"])
+W_tilde_cont <- W_tilde_2 - W_tilde_1
 
-# Note: Try Posterior predictions with STAN
+# Visualization
+#
+plot(NULL, xlim=c(-4,4), ylim=c(0,0.5))
+  lines(density(W_tilde_1), col="red")
+  lines(density(W_tilde_2), col="blue")
+    abline(v = colMeans(samples[,"alpha[1]"]), lty=2)
+    abline(v = colMeans(samples[,"alpha[2]"]), lty=2)
+
+plot(NULL, xlim=c(-4,4), ylim=c(0,0.5))
+  lines(density(W_tilde_cont), )
+  polygon(density(W_tilde_cont), col="steelblue")
+    abline(v = mean(W_tilde_cont), lty=2, )
+
+# Proportion above zero (men > women)
+sum(W_tilde_cont > 0) / N 
+# Proportion below zero (women < men)
+sum(W_tilde_cont < 0) / N 
+
+# Q2: Direct causal effect of S on W 
+# Functional relationship: W=f_W(S, H)
+
+# Model definition
+# W_i ~ normal(mu_i, sigma)
+# mu_i = alpha_S[i] + beta_S[i]
+# sigma ~ exponential(1)
+
+# Data wrangling
+# 
+library(rethinking)
+data(Howell1)
+dat <- Howell1
+d <- Howell1[dat$age > 18,]
+d$W <- scale(d$weight)
+d$H <- scale(d$height)
+d$S <- d$male + 1
+
+# Date list
+#
+dat_ls <- list(N=nrow(d), K=2, W=as.numeric(d$W), H=as.numeric(d$H), 
+               S=as.integer(d$S))
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_2_sim_intervent.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+# 
+samples <- fit$draws(format = "matrix")
+
+# Contrast distribution
+#
+N_s <- 1e2
+x_seq <- seq(-2,2, length.out=N_s)
+calc_muF <- function(x_seq) samples[,"alpha[1]"] + samples[,"beta[1]"] * x_seq
+# Predicted weight for females
+muF <- vapply( x_seq, calc_muF, double(nrow(samples)) )
+calc_muM <- function(x_seq) samples[,"alpha[2]"] + samples[,"beta[2]"] * x_seq
+# Predicted weight for males 
+muM <- vapply( x_seq, calc_muM, double(nrow(samples)) )
+# Contrast distribution for the predicted average weight difference
+mu_cont <- muM - muF
+
+# Visualize
 #
 
-# Proportion above zero
-sum(W_cont > 0) / nrow(samples) 
-# Proportion below zero
-sum(W_cont < 0) / nrow(samples) 
+
+
+
