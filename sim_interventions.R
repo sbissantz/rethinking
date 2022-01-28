@@ -127,7 +127,7 @@ d$S <- d$male + 1
 
 # Date list
 #
-dat_ls <- list(N=nrow(d), K=2, W=as.numeric(d$W), H=as.numeric(d$H), 
+dat_ls <- list(N=as.integer(nrow(d)), K=2, W=as.numeric(d$W), H=as.numeric(d$H), 
                S=as.integer(d$S))
 
 # Fitting
@@ -160,7 +160,51 @@ mu_cont <- muM - muF
 
 # Visualize
 #
+plot( NULL, xlim=c(-2,2), ylim=c(-3,3), xlab="height (std)", 
+      ylab="weight contrast F-M (std)")
+mu_cont_mean <- apply(mu_cont,2,mean)
+for(i in 1:1e2) lines(x_seq, mu_cont[i,], lwd=5, col=alpha("steelblue", 0.1) )
+lines(x_seq, mu_cont_mean, lwd=2 )
 
+# Full Luxury Bayes
+#
+
+# Causal system
+#
+# S 
+# H=f(S)
+# W=f(S,H)
+# 
+# weight
+# W_i ~ normal(mu_i, sigma)
+# mu_i = a_S[i] + b_S[i]*(H-Hbar)
+# a_S[i] ~ normal(60,10)
+# b_S[i] ~ lognormal(0,1)
+# sigma ~ uniform(0,10)
+# height
+# H_i ~ normal(nu_i, tau)
+# nu_i = h_S[i] 
+# tau ~ uniform(0,10)
+
+library(rethinking)
+data("Howell1")
+d <- Howell1
+d <- d[d$age > 18,]
+dat <- list(
+  W=d$weight,
+  H=d$height,
+  Hbar=mean(d$height),
+  S=d$male+1
+)
+dat
+m_SHW <- ulam(
+  alist(
+    W ~ dnorm(mu, sigma),
+    mu <- a[S] + b[S]*(H-Hbar),
+    a[S] ~ dnorm(60,10),
+    b[S] ~ dlnorm(0,1),
+    sigma ~ dunif(0,10)
+  ), dat=dat, chains = 4, cores = 4 )
 
 
 
