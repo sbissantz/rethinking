@@ -13,23 +13,25 @@ parameters {
   vector[K] a;  
   vector<lower=0>[K] b;  
   real<lower=0> sigma;
-  real h;  
+  vector[K] h;  
   real<lower=0> tau;
 }
 model {
   // weight 
-  W ~ normal(a[S]+b[S]*(H-Hbar), sigma);
-  a ~ normal(60,10)
-  b ~ lognormal(0,1)
-  sigma ~ uniform(0,10)
+  vector[N] mu;
+  sigma ~ uniform(0,10);
+  a ~ normal(60,10);
+  b ~ lognormal(0,1);
+  for(i in 1:N) {
+    mu[i] = a[S[i]]+b[S[i]] * (H[i]-Hbar);
+  }
+  W ~ normal(mu, sigma);
   // height 
-  H ~ normal(h[S], sigma) 
-  h ~ normal(0, 10) 
-# H_i ~ normal(nu_i, tau)
-# nu_i = h_S[i] 
-# tau ~ uniform(0,10)
+  vector[N] nu;
+  tau ~ uniform(0,10);
+  h ~ normal(0, 10);
+  for(i in 1:N) {
+    nu[i] = h[S[i]];
+  }
+  H ~ normal(nu, tau);
 }
-
-
-
-

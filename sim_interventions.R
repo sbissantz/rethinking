@@ -156,7 +156,7 @@ calc_muM <- function(x_seq) samples[,"alpha[2]"] + samples[,"beta[2]"] * x_seq
 # Predicted weight for males 
 muM <- vapply( x_seq, calc_muM, double(nrow(samples)) )
 # Contrast distribution for the predicted average weight difference
-mu_cont <- muM - muF
+mu_cont <- muF - muM
 
 # Visualize
 #
@@ -186,25 +186,33 @@ lines(x_seq, mu_cont_mean, lwd=2 )
 # nu_i = h_S[i] 
 # tau ~ uniform(0,10)
 
+# Data wrangling
+#
 library(rethinking)
 data("Howell1")
 d <- Howell1
 d <- d[d$age > 18,]
+
+# Reduction 
+#
 dat <- list(
   W=d$weight,
   H=d$height,
   Hbar=mean(d$height),
   S=d$male+1
 )
-dat
-m_SHW <- ulam(
-  alist(
-    W ~ dnorm(mu, sigma),
-    mu <- a[S] + b[S]*(H-Hbar),
-    a[S] ~ dnorm(60,10),
-    b[S] ~ dlnorm(0,1),
-    sigma ~ dunif(0,10)
-  ), dat=dat, chains = 4, cores = 4 )
 
+# Fitting
+#
+file <- file.path(getwd(), "stan", "sys_sim_interventions.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+#
+#
 

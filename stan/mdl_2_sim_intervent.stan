@@ -11,8 +11,12 @@ parameters {
   real<lower=0> sigma;
 }
 model {
-  W ~ normal(alpha[S] + beta[S], sigma);
+  vector[N] mu; 
+  sigma ~ exponential(1);
   alpha ~ normal(0, .5);
   beta ~ lognormal(0, .5);
-  sigma ~ exponential(1);
+  for(i in 1:N) {
+    mu[i] = alpha[S[i]] + beta[S[i]] * H[i];
+  }
+  W ~ normal(mu, sigma);
 }
