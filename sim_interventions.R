@@ -192,13 +192,18 @@ library(rethinking)
 data("Howell1")
 d <- Howell1
 d <- d[d$age > 18,]
+d$W <- scale(d$weight)
+d$H <- scale(d$height)
+Hbar <- mean(d$height)
 
 # Reduction 
 #
 dat <- list(
-  W=d$weight,
-  H=d$height,
-  Hbar=mean(d$height),
+  N=as.integer(nrow(d)),
+  K=as.integer(2),
+  W=as.numeric(d$W),
+  H=as.numeric(d$H),
+  Hbar=Hbar,
   S=d$male+1
 )
 
@@ -206,13 +211,34 @@ dat <- list(
 #
 file <- file.path(getwd(), "stan", "sys_sim_interventions.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(dat_ls)
+fit <- mdl$sample(dat)
 
 # Diagnostics
 #
 fit$cmdstan_diagnose()
 fit$print()
 
+# Extract samples
 #
+samples <- fit$draws(format="matrix")
+
+# Simulate interventions
 #
+n <- 1e3 
+# Simulate W for S=1 
+H_S1 <- rnorm(n, samples[,"h[1]"], samples[,"tau"])
+W_S1 <- rnorm(n, samples[,"a[1]"] + samples[,"b[1]"]*(H_S1-Hbar), 
+              samples[,"sigma"]) 
+
+# Simulate W for S=2 
+H_S2 <- rnorm(n, samples[,"h[2]"], samples[,"tau"])
+W_S2 <- rnorm(n, samples[,"a[2]"] + samples[,"b[2]"]*(H_S2-Hbar), 
+              samples[,"sigma"]) 
+# Contreast distribution
+W_do_S <- W_S1 - W_S2
+
+# Visualize the contrast distribution
+#
+plot(density(W_do_S))
+
 

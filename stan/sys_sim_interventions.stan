@@ -17,21 +17,21 @@ parameters {
   real<lower=0> tau;
 }
 model {
+  // height 
+  vector[N] nu;
+  tau ~ exponential(1);
+  h ~ normal(0, 0.5);
+  for(i in 1:N) {
+    nu[i] = h[S[i]];
+  }
+  H ~ normal(nu, tau);
   // weight 
   vector[N] mu;
-  sigma ~ uniform(0,10);
-  a ~ normal(60,10);
+  sigma ~ exponential(1);
+  a ~ normal(0,0.5);
   b ~ lognormal(0,1);
   for(i in 1:N) {
     mu[i] = a[S[i]]+b[S[i]] * (H[i]-Hbar);
   }
   W ~ normal(mu, sigma);
-  // height 
-  vector[N] nu;
-  tau ~ uniform(0,10);
-  h ~ normal(0, 10);
-  for(i in 1:N) {
-    nu[i] = h[S[i]];
-  }
-  H ~ normal(nu, tau);
 }
