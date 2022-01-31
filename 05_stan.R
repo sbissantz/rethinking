@@ -609,16 +609,92 @@ for (i in seq(s)) {
   lines(s, D_tilde_A0[i,], pch=20, col=alpha("black", 0.2))
 }
 
+# Masked relationship ---------------------------------------------------
 
+library(rethinking)
+data(milk)
+d <- milk
+str(d)
 
+# DAG
+#
+# dag <- dagitty::dagitty('dag{
+# N [pos="0,0"]
+# K [pos="0,1"]
+# M [pos="1,1"]
+# K -> N <- M;
+# }')
+# plot(dag)
+# Data wrangling
+#
+d$K <- scale(d$kcal.per.g)
+d$N <- scale(d$neocortex.perc)
+d$M <- scale(log(d$mass))
 
+# Sketch 
+#
+# K_i ~ normal(mu_i, sigma) 
+# mu_i = alpha + beta_N * N 
+# alpha ~ normal(0,0.2)
+# beta ~ normal(0,0.5)
+# sigma ~ exponential(1)
 
+# PPS
+#
+N <- 1e3
+N_seq <- seq(-2,2, length.out=N) 
+alpha <- rnorm(N, 0,0.2)
+beta <- rnorm(N, 0,0.5) 
 
+# PPS Visualization
+# (standardized)
+#
+plot(NULL, xlim=c(-2,2), ylim=c(-2,2), xlab="Neocortex percent (std)", 
+     ylab="Milk energy density in k_cal (std)")
+for(i in 1:100) abline(a = alpha[i], b = beta[i], col=alpha("steelblue", 0.3), 
+                       lwd=2)
 
+# PPS Visualization
+# (unstandardized)
+#
+plot(NULL, xlim=c(-2,2), ylim=c(-2,2), xlab="Neocortex percent (std)", 
+     ylab="Milk energy density in k_cal", xaxt="n", yaxt="n")
+for(i in 1:100) abline(a = alpha[i], b = beta[i], col=alpha("steelblue", 0.3), 
+                       lwd=2)
+lbl_x <- round(sd(d$neocortex.perc, na.rm = TRUE) * seq(-2,2), digits = 1)
+axis(side=1,at = seq(-2,2), labels = lbl_x ) 
+lbl_y <- round(sd(d$kcal.per.g, na.rm = TRUE) * seq(-2,2), digits = 1)
+axis(side=2,at = seq(-2,2), labels = lbl_y ) 
 
+# Reduction 
+#
+# Note: complete case analysis
+d <- d[complete.cases(d$neocortex.perc),]
+dat_ls <- list(n=nrow(d), N=as.numeric(d$N), K=as.numeric(d$K))
 
+# Definition 
+#
+file <- file.path(getwd(), "stan", "mdl_55.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data = dat_ls)
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
 
+# Sampling
+#
+samples <- fit$draws(format="data.frame")
+
+# Visual inference
+#
+plot(d$K ~ d$N, pch=20, col=alpha("black", 0.5), xlab="Neocortex percent (std)", 
+     ylab="Milk energy density in k_cal") 
+for(i in 1:1e2) {
+  abline(a=samples$alpha[i], b=samples$beta_N[i], col=alpha("steelblue", .3),
+         lwd=2)
+}
 
 
 
