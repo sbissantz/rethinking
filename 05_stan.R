@@ -631,6 +631,8 @@ d$K <- scale(d$kcal.per.g)
 d$N <- scale(d$neocortex.perc)
 d$M <- scale(log(d$mass))
 
+# mdl_55 ------------------------------------------------------------------
+
 # Sketch 
 #
 # K_i ~ normal(mu_i, sigma) 
@@ -669,7 +671,8 @@ axis(side=2,at = seq(-2,2), labels = lbl_y )
 # Reduction 
 #
 # Note: complete case analysis
-d <- d[complete.cases(d$neocortex.perc),]
+d <- d[complete.cases(d$N),]
+# d <- d[complete.cases(d$N, d$K, d$M),]
 dat_ls <- list(n=nrow(d), N=as.numeric(d$N), K=as.numeric(d$K))
 
 # Definition 
@@ -696,15 +699,123 @@ for(i in 1:1e2) {
          lwd=2)
 }
 
+# mdl_56 ------------------------------------------------------------------
 
+# Sketch 
+#
+# K_i ~ normal(mu_i, sigma) 
+# mu_i = alpha + beta_M * M
+# alpha ~ normal(0,0.2)
+# beta ~ normal(0,0.5)
+# sigma ~ exponential(1)
 
+# PPS
+#
+N <- 1e3
+N_seq <- seq(-2,2, length.out=N) 
+alpha <- rnorm(N, 0,0.2)
+beta <- rnorm(N, 0,0.5) 
 
+# PPS Visualization
+# (standardized)
+#
+plot(NULL, xlim=c(-2,2), ylim=c(-2,2), xlab="Log body mass (std)", 
+     ylab="Milk energy density in k_cal (std)")
+for(i in 1:100) abline(a = alpha[i], b = beta[i], col=alpha("steelblue", 0.3), 
+                       lwd=2)
 
+# PPS Visualization
+# (unstandardized)
+#
+plot(NULL, xlim=c(-2,2), ylim=c(-2,2), xlab="Log body mass (std)", 
+     ylab="Milk energy density in k_cal", xaxt="n", yaxt="n")
+for(i in 1:100) abline(a = alpha[i], b = beta[i], col=alpha("steelblue", 0.3), 
+                       lwd=2)
+lbl_x <- round(sd(d$mass, na.rm = TRUE) * seq(-2,2), digits = 1)
+axis(side=1,at = seq(-2,2), labels = lbl_x ) 
+lbl_y <- round(sd(d$kcal.per.g, na.rm = TRUE) * seq(-2,2), digits = 1)
+axis(side=2,at = seq(-2,2), labels = lbl_y ) 
 
+# Reduction 
+#
+# Note: complete case analysis
+d <- d[complete.cases(d$M, d$K),]
+dat_ls <- list(n=nrow(d), M=as.numeric(d$M), K=as.numeric(d$K))
 
+# Definition 
+#
+file <- file.path(getwd(), "stan", "mdl_56.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data = dat_ls)
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
 
+# Sampling
+#
+samples <- fit$draws(format="data.frame")
 
+# Visual inference
+#
+plot(d$K ~ d$M, pch=20, col=alpha("black", 0.5), xlab="Log body mass (std)", 
+     ylab="Milk energy density in k_cal") 
+with(samples, {
+  for(i in 1:1e2) { 
+    abline(a=alpha[i], b=beta_M[i], col=alpha("steelblue", .3), lwd=2)
+  }})
 
+# mdl_57 ------------------------------------------------------------------
 
+# Sketch 
+#
+# K_i ~ normal(mu_i, sigma) 
+# mu_i = alpha + beta_M * M + beta_N *N
+# alpha ~ normal(0,0.2)
+# beta ~ normal(0,0.5)
+# sigma ~ exponential(1)
 
+# Reduction 
+#
+# Note: complete case analysis
+d <- d[complete.cases(d$M, d$K, d$K),]
+dat_ls <- list(n=nrow(d), N=as.numeric(d$N), M=as.numeric(d$M), 
+               K=as.numeric(d$K))
+
+# Definition 
+#
+file <- file.path(getwd(), "stan", "mdl_57.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data = dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Sampling
+#
+samples <- fit$draws(format="data.frame")
+
+# Posterior correlations
+#
+pairs(~K+N+M, dat_ls)
+with(samples, cor(beta_M, beta_N))
+
+# Visual inference
+#
+par(mfrow=c(2,1))
+plot(d$K ~ d$M, pch=20, col=alpha("black", 0.5), xlab="Log body mass (std)", 
+     ylab="Milk energy density in k_cal") 
+with(samples, {
+  for(i in 1:1e2) { 
+    abline(a=alpha[i], b=beta_M[i], col=alpha("steelblue", .3), lwd=2)
+  }})
+plot(d$K ~ d$N, pch=20, col=alpha("black", 0.5), xlab="Neocortex percent (std)", 
+     ylab="Milk energy density in k_cal") 
+with(samples, {
+  for(i in 1:1e2) { 
+    abline(a=alpha[i], b=beta_N[i], col=alpha("steelblue", .3), lwd=2)
+  }})
+par(mfrow=c(1,1))
