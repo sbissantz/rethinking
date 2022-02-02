@@ -819,3 +819,42 @@ with(samples, {
     abline(a=alpha[i], b=beta_N[i], col=alpha("steelblue", .3), lwd=2)
   }})
 par(mfrow=c(1,1))
+
+# Counterfactual plots
+#
+n <- 1e3
+calc_mu <- function(N, M) {
+  with(samples, alpha + beta_N*N + beta_M*M)
+}
+sim_K <- function(n, N, M) {
+  with(samples, {
+    rnorm(n,
+          mean=alpha + beta_N*N + beta_M*M,
+          sd=sigma )
+    })
+}
+x_seq <- seq(-3,3, length.out=n)
+  
+# Assuming N=0
+#
+mu_N0 <- mapply(calc_mu, M=x_seq, N=0)
+K_tilde_N0 <- mapply(sim_K, n, M=x_seq, N=0)
+mu_N0_mean <- colMeans(mu_N0)
+
+plot(d$K ~ d$N, pch=20, col=alpha("black", .3))
+for(i in 1:1e2) lines(x_seq, K_tilde_N0[i,], col=alpha("steelblue", .1))
+for(i in 1:1e2) lines(x_seq, mu_N0[i,], col=alpha("white", .3), lwd=2)
+lines(x_seq, mu_N0_mean, lwd=3)
+
+# Assuming M=0
+#
+mu_M0 <- mapply(calc_mu, N=x_seq, M=0)
+K_tilde_M0 <- mapply(sim_K, n, N=x_seq, M=0)
+mu_M0_mean <- colMeans(mu_M0)
+
+plot(d$K ~ d$N, pch=20, col=alpha("black", .3))
+for(i in 1:100) lines(x_seq, K_tilde_M0[i,], col=alpha("steelblue", .1))
+for(i in 1:100) lines(x_seq, mu_M0[i,], col=alpha("white", .4), lwd=2)
+lines(x_seq, mu_M0_mean, lwd=3)
+
+
