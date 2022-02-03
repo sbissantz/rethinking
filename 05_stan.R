@@ -841,6 +841,7 @@ mu_N0 <- mapply(calc_mu, M=x_seq, N=0)
 K_tilde_N0 <- mapply(sim_K, n, M=x_seq, N=0)
 mu_N0_mean <- colMeans(mu_N0)
 
+par(mfrow=c(2,1))
 plot(d$K ~ d$N, pch=20, col=alpha("black", .3))
 for(i in 1:1e2) lines(x_seq, K_tilde_N0[i,], col=alpha("steelblue", .1))
 for(i in 1:1e2) lines(x_seq, mu_N0[i,], col=alpha("white", .3), lwd=2)
@@ -856,5 +857,10 @@ plot(d$K ~ d$N, pch=20, col=alpha("black", .3))
 for(i in 1:100) lines(x_seq, K_tilde_M0[i,], col=alpha("steelblue", .1))
 for(i in 1:100) lines(x_seq, mu_M0[i,], col=alpha("white", .4), lwd=2)
 lines(x_seq, mu_M0_mean, lwd=3)
+par(mfrow=c(1,1))
+
+
+
+
 
 
