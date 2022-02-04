@@ -1,5 +1,5 @@
 
-# 5.1 ---------------------------------------------------------------------
+# 5.1 Spurious associations -----------------------------------------------
 
 # Data wrangling
 #
@@ -609,7 +609,7 @@ for (i in seq(s)) {
   lines(s, D_tilde_A0[i,], pch=20, col=alpha("black", 0.2))
 }
 
-# Masked relationship ---------------------------------------------------
+# 5.2 Masked relationships ------------------------------------------------
 
 library(rethinking)
 data(milk)
@@ -858,6 +858,92 @@ for(i in 1:100) lines(x_seq, K_tilde_M0[i,], col=alpha("steelblue", .1))
 for(i in 1:100) lines(x_seq, mu_M0[i,], col=alpha("white", .4), lwd=2)
 lines(x_seq, mu_M0_mean, lwd=3)
 par(mfrow=c(1,1))
+
+# 5.3 Categorical variables -----------------------------------------------
+
+library(rethinking)
+data("Howell1")
+d <- Howell1
+str(d)
+
+# Model sketch (indicator variable)
+# height_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_M * M_i
+# alpha ~ normal(178, 20)
+# beta_m ~ normal(0, 10)
+# sigma ~ uniform(0, 50)
+
+# PPS
+#
+n <- nrow(d) 
+alpha <- rnorm(n, 178, 20)
+beta_m <- rnorm(n, 0, 10)
+mu <- alpha + beta_m * d$male
+# Summarize
+mean(mu[d$male==1])
+mean(mu[d$male==0])
+# Visualize
+# Expected difference between male and female heights 
+plot(NULL, ylim=c(0, 250), xlim=c(0,1), ylab="Height (cm)", xlab="Male", 
+     pch=20, xaxt="n")
+axis(1, at=c(0,1))
+for(i in 1:100) abline(a=alpha[i], b=beta_m[i], col=alpha("steelblue", 0.3))
+# Alternative coding
+mu_female <- rnorm(n, 178, 20)
+mu_male <- rnorm(n, 178, 20) + rnorm(n, 0, 10)
+rethinking::precis(data.frame(mu_female, mu_male))
+
+# Model sketch (index variable)
+# height_i ~ normal(mu_i, sigma)
+# mu_i = alpha_sex[i] 
+# alpha_sex[i] ~ normal(178, 20)
+# sigma ~ uniform(0, 50)
+
+# Data wrangling
+#
+# Ladys first coding
+d$sex <- d$male + 1
+d$H <- scale(d$height)
+
+# Reduction
+#
+dat_ls <- list(N=nrow(d), K=2, S=as.integer(d$sex), H=as.numeric(d$H))
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_58.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data = dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Sampling
+#
+samples <- fit$draws(format = "matrix")
+
+# Summary
+#
+# female - male
+mu_contrast <- samples[, "alpha[1]"] - samples[, "alpha[2]"]
+plot(density(mu_contrast))
+
+
+# PPD 
+#
+N <- 1e3
+ppd_female <- rnorm(N, samples[,"alpha[1]"], samples[,"sigma"])
+ppd_male <- rnorm(N, samples[,"alpha[2]"], samples[,"sigma"])
+height_contrast <- ppd_female - ppd_male
+plot(density(height_contrast))
+
+# Visualize
+#
+
+
+
 
 
 
