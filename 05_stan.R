@@ -930,23 +930,67 @@ samples <- fit$draws(format = "matrix")
 mu_contrast <- samples[, "alpha[1]"] - samples[, "alpha[2]"]
 plot(density(mu_contrast))
 
-
 # PPD 
 #
 N <- 1e3
 ppd_female <- rnorm(N, samples[,"alpha[1]"], samples[,"sigma"])
 ppd_male <- rnorm(N, samples[,"alpha[2]"], samples[,"sigma"])
 height_contrast <- ppd_female - ppd_male
-plot(density(height_contrast))
 
 # Visualize
 #
+plot(density(height_contrast))
 
 
+#
+# Many categories
+#
+library(rethinking)
+data("milk")
+d <- milk
+levels(d$clade)
 
+# Data wrangling
+#
+d$clade_id <- as.numeric(d$clade)
+d$K <- scale(d$kcal.per.g)
 
+# PPS
+#
+n <- 1e3
+alpha <- rnorm(n,0,0.5)
+plot(density(alpha))
 
+# Sketch
+#
+# K_i ~ normal(mu_i, sigma)
+# mu_i = alpha_clade[i]
+# alpha_clade[i] ~ normal(0,0.5)
+# sigma ~ exponential(1)
 
+# Reduction 
+#
+dat_ls <- list(n=nrow(d), k=nlevels(d$clade), K=as.numeric(d$K), 
+               C=as.integer(d$clade_id))
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_59.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(dat_ls)
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
 
+# Samples
+#
+samples <- fit$draws(format="matrix")
+colnames(samples)[2:5] <- paste0("alpha_", 1:4)
 
+plot(NULL, xlim=c(-2,2), ylim=c(0,2))
+alphas <- paste0("alpha_", 1:4)
+add_density <- function(alpha, col) lines(density(samples[,alpha]), col=col)
+colors <- c("black", "red", "blue", "green")
+mapply(add_density, alphas, colors)
+legend("topright", legend = levels(d$clade), pch = 20, col = colors)
