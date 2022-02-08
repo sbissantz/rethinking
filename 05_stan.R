@@ -994,3 +994,65 @@ add_density <- function(alpha, col) lines(density(samples[,alpha]), col=col)
 colors <- c("black", "red", "blue", "green")
 mapply(add_density, alphas, colors)
 legend("topright", legend = levels(d$clade), pch = 20, col = colors)
+
+# Multiple categories 
+#
+house_names <- c("Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin")
+d$houses <- factor(sample(house_names, nrow(d), replace=TRUE))
+dat_ls <- list(n=nrow(d), k=nlevels(d$clade), l=nlevels(d$houses), 
+               K=as.numeric(d$K),  C=as.integer(d$clade_id), 
+               H=as.integer(d$houses))
+
+# Sketch
+#
+# K_i ~ normal(mu_i, sigma)
+# mu_i = alpha_clade[i] + gamma_house[i]
+# alpha_clade[i] ~ normal(0,0.5)
+# gamma_house[i] ~ normal(0,0.5)
+# sigma ~ exponential(1)
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_510.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Dignostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Posterior samples
+#
+samples <- fit$draws(format = "matrix")
+colnames(samples)[2:5] <- paste0("alpha_", 1:4)
+colnames(samples)[6:9] <- paste0("gamma_", 1:4)
+
+# Visualize inference
+#
+
+# Clade
+#
+alphas <- paste0("alpha_", 1:4)
+plot(NULL, xlim=c(-2,2), ylim=c(0,2))
+add_density <- function(alpha, col) lines(density(samples[,alpha]), col=col)
+colors <- c("black", "red", "blue", "green")
+mapply(add_density, alphas, colors)
+legend("topright", legend = levels(d$clade), pch = 20, col = colors)
+
+# Houses 
+#
+gammas <- paste0("gamma_", 1:4)
+plot(NULL, xlim=c(-2,2), ylim=c(0,2))
+add_density <- function(gamma, col) lines(density(samples[,gamma]), col=col)
+colors <- c("black", "red", "blue", "green")
+mapply(add_density, gammas, colors)
+legend("topright", legend = levels(d$houses), pch = 20, col = colors)
+
+
+
+
+
+
+
+
