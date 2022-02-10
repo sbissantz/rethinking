@@ -692,8 +692,67 @@ for(i in 1:100) abline(a=samples$alpha[i], b=samples$beta_X[i],
 title("X & Y | Z")
 par(mfrow=c(1,1))
 
+# 5M2 ---------------------------------------------------------------------
 
+# Masked associations
+#
+dag <- dagitty::dagitty('dag {
+                        X [pos="0,0"]
+                        Y [pos="0.5,1"]
+                        Z [pos="1,0"]
+                        X -> Y <- Z
+                        X -- Z
+}')
+plot(dag)
 
+# Functional relationships
+#
+N <- 1e3
+X <- rnorm(N)
+Z <- rnorm(N, X)
+Y <- rnorm(N, -X+Z)
+# Check correlations
+cor(data.frame(X,Y,Z))
+
+# Model Sketch
+#
+# Y_i ~ Normal(mu_i, sigma)
+# mu_i = alpha + beta_X*X + beta_Z*Z 
+# alpha ~ normal(0, 0.2) 
+# beta_X ~ normal(0, 0.5) 
+# beta_Z ~ normal(0, 0.5) 
+
+# Reduction
+#
+dat_ls <- list(N=N,X=X,Z=Z,Y=Y)
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_5M3.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format = "data.frame")
+bayesplot::mcmc_trace(samples)
+
+# Summary
+#
+par(mfrow=c(1,2))
+plot(X, Y,pch=20, col=scales::alpha("black", .3))
+for(i in 1:100) abline(a=samples$alpha[i], b=samples$beta_X[i],
+                       col=scales::alpha("steelblue", .3))
+
+plot(Z, Y,pch=20, col=scales::alpha("black", .3))
+for(i in 1:100) abline(a=samples$alpha[i], b=samples$beta_Z[i],
+                       col=scales::alpha("steelblue", .3))
+par(mfrow=c(1,1))
 
 
 
