@@ -754,6 +754,107 @@ for(i in 1:100) abline(a=samples$alpha[i], b=samples$beta_Z[i],
                        col=scales::alpha("steelblue", .3))
 par(mfrow=c(1,1))
 
+# 5M3 ---------------------------------------------------------------------
+
+library(rethinking)
+data("WaffleDivorce")
+d <- WaffleDivorce
+
+# DAG
+#
+dag <- dagitty::dagitty('dag {
+D [pos="1,0"]
+M [pos="0,0"]
+A [pos="0,.5"]
+L [pos="0,1"]
+A -> M -> D
+A -> D
+L -> A 
+L -> A -> M -> D 
+L -> D
+                        }')
+
+# Data wrangling
+#
+# CSV from source
+# https://worldpopulationreview.com/state-rankings/mormon-population-by-state
+d2 <- read.csv("~/Downloads/csvData.csv")
+colnames(d2)[1] <- "Location"
+d3 <- merge(x = d, y = d2)
+d3$p_mormons <- (d3$mormonPop/d3$Pop)*100
+
+# Standardization
+#
+D <- scale(d3$Divorce) 
+L <- scale(d3$p_mormons)
+A <- scale(d3$MedianAgeMarriage)
+M <- scale(d3$Marriage)
+
+# Reduction
+#
+dat_ls <- list(n=nrow(d3), D=as.numeric(D), L=as.numeric(L), A=as.numeric(A),
+               M=as.numeric(M))
+
+# Model sketch
+#
+# D_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_L*L + beta_A*A + beta_M*M  
+# alpha ~ normal(0, 0.2) 
+# beta_L ~ normal(0, 0.5)
+# beta_A ~ normal(0, 0.5)
+# beta_M ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+
+# Fit 
+#
+file <- file.path(getwd(), "stan", "mdl_5M4.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnistics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format = "data.frame")
+bayesplot::mcmc_trace(samples)
+round(cor(samples), digits = 2)
+
+#
+#
+N_sim <- 1e3
+s <- seq(-3,8, length.out=N_sim)
+sim_D <- function(s, n=N_sim) {
+  with(samples, {
+    rnorm(
+      n=N_sim, 
+      mean=alpha + beta_L*s + beta_A*s + beta_M*s,
+      sd=sigma)})
+  }
+D_tilde <- vapply(s, sim_D, FUN.VALUE = double(N_sim))
+
+# Visual inference 
+#
+plot(NULL, xlim=c(-0.5,6), ylim=c(-6,2), xlab="LD-Saint rate (std)",
+     ylab="Divorece rate (std)")
+for(i in 1:200) lines(s, D_tilde[i,], col=scales::alpha("grey", .2))
+points(d3$D ~ d3$L, pch=20)
+for(i in 1:200) abline(a=samples$alpha[i], b=samples$beta_L[i], 
+                       col=scales::alpha("steelblue", 0.3), lwd=4)
+abline(a=mean(samples$alpha), b=mean(samples$beta_L), col="white", lwd=2)
+title("L ~ D | A, M")
+
+#
+#
+
+
+# Visualize
+#
+
+
+
 
 
 
