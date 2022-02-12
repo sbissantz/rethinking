@@ -756,6 +756,88 @@ par(mfrow=c(1,1))
 
 # 5M3 ---------------------------------------------------------------------
 
+# DAG
+# Idea: The higher the divorce rate the more singles around, and the more
+# chances to find another partner and get married.
+#
+dag <- dagitty::dagitty('dag {
+D [pos="1,0"]
+M [pos="0.5,1"]
+A [pos="0,0"]
+D <- A -> M 
+D -> M
+}')
+plot(dag)
+
+# Data
+#
+library(rethinking)
+data("WaffleDivorce")
+d <- WaffleDivorce
+
+# System sketch
+#
+# M_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_D*D_i + beta_A*A_i
+# alpha ~ normal(0, 0.2)
+# beta_D ~ normal(0, 0.5)
+# beta_A ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+# 
+# D_i ~ normal(mu_i, sigma)
+# mu_i = nu + beta_A*A_i
+# eta ~ normal(0, 0.2)
+# theta ~ normal(0, 0.5)
+# tau ~ exponential(1)
+
+# Date wrangling
+#
+d$M <- scale(d$Marriage)
+d$D <- scale(d$Divorce)
+d$A <- scale(d$MedianAgeMarriage)
+
+# Reduction
+#
+dat_ls <- list(n=nrow(d), M=as.numeric(d$M), D=as.numeric(d$D), 
+               A=as.numeric(d$A))
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_4M3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format="data.frame")
+
+# Posterior inference
+#
+
+N_sim <- 1e3
+D <- seq(-2,2, length.out=N_sim)
+
+sim_M <- function(D, A=0) {
+    with(samples, {
+             rnorm(N_sim, 
+             mean=alpha + beta_D*D + beta_A*A, 
+             sd=sigma
+             )})
+}
+M_tilde <- sapply(D, FUN=sim_M, A=0)
+
+plot(D, colMeans(M_tilde), pch=20, xlab="Manipulated D", ylab="Counterfactual M")
+
+
+
+
+# 5M4 ---------------------------------------------------------------------
+
 library(rethinking)
 data("WaffleDivorce")
 d <- WaffleDivorce
@@ -845,16 +927,6 @@ for(i in 1:200) abline(a=samples$alpha[i], b=samples$beta_L[i],
                        col=scales::alpha("steelblue", 0.3), lwd=4)
 abline(a=mean(samples$alpha), b=mean(samples$beta_L), col="white", lwd=2)
 title("L ~ D | A, M")
-
-#
-#
-
-
-# Visualize
-#
-
-
-
 
 
 
