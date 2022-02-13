@@ -818,7 +818,9 @@ samples <- fit$draws(format="data.frame")
 
 # Posterior inference
 #
-
+# Counterfactual effect 
+# ...of manipulating D | DAG
+#
 N_sim <- 1e3
 D <- seq(-2,2, length.out=N_sim)
 
@@ -831,10 +833,14 @@ sim_M <- function(D, A=0) {
 }
 M_tilde <- sapply(D, FUN=sim_M, A=0)
 
-plot(D, colMeans(M_tilde), pch=20, xlab="Manipulated D", ylab="Counterfactual M")
+plot(D, colMeans(M_tilde), pch=20, xlab="Manipulated D", ylab="Counterfactual M",
+col=scales::alpha("steelblue", .7))
 
-
-
+# Causal Inference | DAG
+#
+plot(d$M ~ d$D,pch=20, xlab="Divorce rate", ylab="Marriage rate")
+for(i in 1:100) abline(a=samples$alpha[i], b=samples$beta_D[i], 
+                       col=scales::alpha("steelblue", .3))
 
 # 5M4 ---------------------------------------------------------------------
 
@@ -928,6 +934,49 @@ for(i in 1:200) abline(a=samples$alpha[i], b=samples$beta_L[i],
 abline(a=mean(samples$alpha), b=mean(samples$beta_L), col="white", lwd=2)
 title("L ~ D | A, M")
 
+# 5M5 ---------------------------------------------------------------------
 
+# DAG
+#
+dag <- dagitty::dagitty('dag{
+gas_price [pos="0,0"] 
+driving [pos="0,.5"] 
+exercise [pos="0,1"]
+eating_out [pos="1,1"]
+meal_size [pos="1,1.5"]
+obesity [pos="0,2"] 
+gas_price -> driving -> exercise -> obesity
+gas_price -> driving -> eating_out -> meal_size -> obesity
+}')
+plot(dag)
 
+# A regression which estimates the influence of gas_price on obesity is done
+# thorugh the following model:
+# obesity_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_gas_price
+# alpha ~ normal(0, 0.2)
+# beta_gas_price ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+
+# Since there are no "adjustment sets", the influence can be directly estimated
+adjustmentSets(dag, exposure="gas_price", outcome="obesity")
+# Conditionng on any predictor blocks the TX-effect (pipe)
+
+# 5H1 ---------------------------------------------------------------------
+
+# Dag
+#
+dag <- dagitty::dagitty('dag { M -> A -> D }')
+
+# Implied conditional independencies
+#
+dagitty::impliedConditionalIndependencies(dag)
+# D _||_ M | A
+
+library(rethinking)
+data(WaffleDivorce)
+d <- WaffleDivorce
+lm(d$Divorce ~ d$Marriage)
+lm(d$Divorce ~ d$Marriage + d$MedianAgeMarriage)
+# Effect greatly does diminish! 
 
