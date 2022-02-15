@@ -756,6 +756,94 @@ par(mfrow=c(1,1))
 
 # 5M3 ---------------------------------------------------------------------
 
+# DAG
+# Idea: The higher the divorce rate the more singles around, and the more
+# chances to find another partner and get married.
+#
+dag <- dagitty::dagitty('dag {
+D [pos="1,0"]
+M [pos="0.5,1"]
+A [pos="0,0"]
+D <- A -> M 
+D -> M
+}')
+plot(dag)
+
+# Data
+#
+library(rethinking)
+data("WaffleDivorce")
+d <- WaffleDivorce
+
+# System sketch
+#
+# M_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_D*D_i + beta_A*A_i
+# alpha ~ normal(0, 0.2)
+# beta_D ~ normal(0, 0.5)
+# beta_A ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+# 
+# D_i ~ normal(mu_i, sigma)
+# mu_i = nu + beta_A*A_i
+# eta ~ normal(0, 0.2)
+# theta ~ normal(0, 0.5)
+# tau ~ exponential(1)
+
+# Date wrangling
+#
+d$M <- scale(d$Marriage)
+d$D <- scale(d$Divorce)
+d$A <- scale(d$MedianAgeMarriage)
+
+# Reduction
+#
+dat_ls <- list(n=nrow(d), M=as.numeric(d$M), D=as.numeric(d$D), 
+               A=as.numeric(d$A))
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "mdl_4M3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format="data.frame")
+
+# Posterior inference
+#
+# Counterfactual effect 
+# ...of manipulating D | DAG
+#
+N_sim <- 1e3
+D <- seq(-2,2, length.out=N_sim)
+
+sim_M <- function(D, A=0) {
+    with(samples, {
+             rnorm(N_sim, 
+             mean=alpha + beta_D*D + beta_A*A, 
+             sd=sigma
+             )})
+}
+M_tilde <- sapply(D, FUN=sim_M, A=0)
+
+plot(D, colMeans(M_tilde), pch=20, xlab="Manipulated D", ylab="Counterfactual M",
+col=scales::alpha("steelblue", .7))
+
+# Causal Inference | DAG
+#
+plot(d$M ~ d$D,pch=20, xlab="Divorce rate", ylab="Marriage rate")
+for(i in 1:100) abline(a=samples$alpha[i], b=samples$beta_D[i], 
+                       col=scales::alpha("steelblue", .3))
+
+# 5M4 ---------------------------------------------------------------------
+
 library(rethinking)
 data("WaffleDivorce")
 d <- WaffleDivorce
@@ -846,16 +934,49 @@ for(i in 1:200) abline(a=samples$alpha[i], b=samples$beta_L[i],
 abline(a=mean(samples$alpha), b=mean(samples$beta_L), col="white", lwd=2)
 title("L ~ D | A, M")
 
+# 5M5 ---------------------------------------------------------------------
+
+# DAG
 #
+dag <- dagitty::dagitty('dag{
+gas_price [pos="0,0"] 
+driving [pos="0,.5"] 
+exercise [pos="0,1"]
+eating_out [pos="1,1"]
+meal_size [pos="1,1.5"]
+obesity [pos="0,2"] 
+gas_price -> driving -> exercise -> obesity
+gas_price -> driving -> eating_out -> meal_size -> obesity
+}')
+plot(dag)
+
+# A regression which estimates the influence of gas_price on obesity is done
+# thorugh the following model:
+# obesity_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_gas_price
+# alpha ~ normal(0, 0.2)
+# beta_gas_price ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+
+# Since there are no "adjustment sets", the influence can be directly estimated
+adjustmentSets(dag, exposure="gas_price", outcome="obesity")
+# Conditionng on any predictor blocks the TX-effect (pipe)
+
+# 5H1 ---------------------------------------------------------------------
+
+# Dag
 #
+dag <- dagitty::dagitty('dag { M -> A -> D }')
 
-
-# Visualize
+# Implied conditional independencies
 #
+dagitty::impliedConditionalIndependencies(dag)
+# D _||_ M | A
 
-
-
-
-
-
+library(rethinking)
+data(WaffleDivorce)
+d <- WaffleDivorce
+lm(d$Divorce ~ d$Marriage)
+lm(d$Divorce ~ d$Marriage + d$MedianAgeMarriage)
+# Effect greatly does diminish! 
 
