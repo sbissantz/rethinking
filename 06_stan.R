@@ -61,6 +61,8 @@ d$H <- scale(d$height)
 d$R <- scale(d$leg_right)
 d$L <- scale(d$leg_left)
 
+# M2 ----------------------------------------------------------------------
+
 # Model sketch
 #
 # H_i ~ nromal(mu_i, sigma)
@@ -75,7 +77,7 @@ dat_ls <- list(N=nrow(d), H=as.numeric(d$H), R=as.numeric(d$R), L=as.numeric(d$L
 
 # Fitting 
 #
-file <- file.path(getwd(), "stan", "mdl_61.stan")
+file <- file.path(getwd(), "stan", "6", "mdl_61.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(data=dat_ls)
 
@@ -134,11 +136,90 @@ library(rethinking)
 data(milk)
 d <- milk
 str(d)
+
+# Visualization
+# 
+pairs(data.frame(d$kcal.per.g, d$perc.lactose, d$perc.fat))
+
+# Data wrangling
+#
 d$K <- scale(d$kcal.per.g)
 d$F <- scale(d$perc.fat)
 d$L <- scale(d$perc.lactose)
 
-pairs(data.frame(d$kcal.per.g, d$perc.lactose, d$perc.fat))
+# M2 ----------------------------------------------------------------------
+
+# Model sketch
+#
+# K_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_L*L
+# alpha ~ normal(0, 0.2)
+# beta_L ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+
+# Reduction
+#
+dat_ls <- list(N=nrow(d), K=as.numeric(d$K), L=as.numeric(d$L))
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "6", "mdl_63.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format = "data.frame")
+# Hairy catterpillar occular inspection test
+bayesplot::mcmc_trace(samples)
+
+# Visualization
+#
+beta_L_d <- density(samples$beta_L)
+plot(beta_L_d) ; lines(beta_L_d, lty=2)
+
+# M4 ----------------------------------------------------------------------
+
+# Model sketch
+#
+# K_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_F*F
+# alpha ~ normal(0, 0.2)
+# beta_F ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+
+# Reduction
+#
+dat_ls <- list(N=nrow(d), K=as.numeric(d$K), F=as.numeric(d$F))  
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "6", "mdl_64.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format = "data.frame")
+# Hairy catterpillar occular inspection test
+bayesplot::mcmc_trace(samples)
+
+# Visualization
+#
+beta_F_d <- density(samples$beta_F)
+plot(beta_F_d) ; lines(beta_F_d, lty=2)
+
+# M5 ----------------------------------------------------------------------
 
 # Model sketch
 #
@@ -151,12 +232,12 @@ pairs(data.frame(d$kcal.per.g, d$perc.lactose, d$perc.fat))
 
 # Reduction
 #
-dat_ls <- list(N=nrow(d), K=as.numeric(d$K), F=as.numeric(d$F), 
-               L=as.numeric(d$L))
+dat_ls <- list(N=nrow(d), K=as.numeric(d$K), L=as.numeric(d$L), 
+               F=as.numeric(d$F))
 
 # Fitting
 #
-file <- file.path(getwd(), "stan", "mdl_63.stan")
+file <- file.path(getwd(), "stan", "6", "mdl_65.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(dat_ls)
 
@@ -176,55 +257,48 @@ bayesplot::mcmc_trace(samples)
 rho_beta <- cor(samples$beta_F, samples$beta_L)
 # High conditional associations
 # Violation: ...parameters do not act independently on the mean!
-plot(samples$beta_F, samples$beta_L, pch=20, col=scales::alpha("steelblue", .3))
+plot(samples$beta_F, samples$beta_L, pch=20, 
+     col=scales::alpha("steelblue", .3))
 
 # Visualization
 #
 beta_F_d <- density(samples$beta_F)
 beta_L_d <- density(samples$beta_L)
-plot(NULL, xlim=c(-2,2), ylim=c(0,2)) 
-lines(beta_F_d, lty=2)
-lines(beta_L_d)
-
-# Excluding one predictor
-#
-library(rethinking)
-data(milk)
-d <- milk
-str(d)
-d$K <- scale(d$kcal.per.g)
-d$F <- scale(d$perc.fat)
-
-# Reduction
-#
-dat_ls <- list(N=nrow(d), K=as.numeric(d$K), F=as.numeric(d$F))  
-
-# Fitting
-#
-file <- file.path(getwd(), "stan", "mdl_64.stan")
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(dat_ls)
-
-# Diagnostics
-#
-fit$cmdstan_diagnose()
-fit$print()
-
-# Samples
-#
-samples <- fit$draws(format = "data.frame")
-# Hairy catterpillar occular inspection test
-bayesplot::mcmc_trace(samples)
-
-# Visualization
-#
-beta_F_d <- density(samples$beta_F)
-plot(beta_F_d) 
-lines(beta_F_d, lty=2)
+plot(NULL, xlim=c(-2,2), ylim=c(0,2.5)) 
+lines(beta_F_d, lty=2) ; lines(beta_L_d)
 
 # Note: since beta_F and beta_L jointly influence the mean, their sum(1) es 
 # approximately equal to the estima of beta_L in the second model.
 
+# Information extraction
+#
+N <- 1e4
+alpha_prior <- rnorm(N, 0, 0.2)
+beta_prior <- rnorm(N, 0, 0.5) 
 
+plot(beta_L_d, xlim=c(-2,2)) 
+lines(beta_F_d, lty=2) ; lines(density(beta_prior), lty=2)
 
+--------------------------------------------------------------------------------
+
+# Sim multicolli
+#
+
+library(rethinking)
+data(milk)
+d <- milk
+
+sim.coll <- function(r=.9) {
+    d$x <- rnorm( nrow(d), mean=r*d$perc.fat,
+    sd=sqrt( (1-r^2) * var(d$perc.fat) ))
+    m <- lm( d$kcal.per.g ~ d$perc.fat + d$x)
+    sqrt( diag(vcov(m))[2] )
+}
+rep.sim.coll <- function(r=0.9, n=100) {
+    stddev <- replicate(n, sim.coll(r))
+    mean(stddev)
+}
+r.seq <- seq(from = 0, to = 0.99, by=0.01)
+stddev <- sapply( r.seq, function(z) rep.sim.coll(r=z, n=100) )
+plot(stddev ~ r.seq, type="l", col=rangi2, lwd=2, xlab="correlation")
 
