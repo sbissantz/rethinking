@@ -414,5 +414,62 @@ d2 <- data.frame(H0, H1, T, M, F)
 #
 dat_ls <- list(N = nrow(d2), h0=d2$H0, h1=d2$H1, T=d2$T, F=d2$F)
 
+# 6.3 Collider bias -------------------------------------------------------
+
+dag <- dagitty::dagitty('dag {
+H [pos="0,0"]
+M [pos="1,0"]
+A [pos="2,0"]
+H -> M <- A
+}')
+plot(dag)
+
+# Data
+#
+library(rethinking)
+d <- rethinking::sim_happiness( seed=1977, N_years=1e3 )
+str(d)
+
+# Visualizaition I
+#
+plot(d$happiness~d$age, pch=20, col=ifelse(d$married, "blue", "black"))
+
+# Reduction 
+#
+d2 <- d[d$age>17,] # adults only!
+
+# Rescaling
+#
+min_A <- 18 ; max_A <- 65
+range_A <- max_A-min_A
+d2$A <- (d2$age - min_A)/(range_A)
+
+summary(d2$A)
+
+# M9 ----------------------------------------------------------------------
+
+# PPS
+#
+N <- 1e3
+b <- rnorm(N,0,.5)
+plot(c(-4,4), c(-4,4), type="n")
+for(i in seq(100)) abline(a=0, b[i])
+
+# Model sketch 
+#
+# H ~ normal(mu, sigma)
+# mu = alpha[mid[i]] + beta_A * A
+# alpha ~ normal(0,0)
+# beta_A ~ normal(0,1)
+# beta_M ~ normal(0,2)
+
+
+
+
+
+
+
+
+
 
 
