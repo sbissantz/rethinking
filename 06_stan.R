@@ -342,7 +342,7 @@ abline(v=1, lty=2) ; text(1,1,"0% growth")
 abline(v=1.5, lty=2) ; text(1.5,1,"50% growth")
 abline(v=0.5, lty=2) ; text(0.5,1,"50% shinkage")
 
-# M66 ---------------------------------------------------------------------
+# M6 ---------------------------------------------------------------------
 
 # Reduction
 #
@@ -359,7 +359,7 @@ fit <- mdl$sample(dat_ls)
 fit$cmdstan_diagnose()
 fit$print()
 
-# M67 ---------------------------------------------------------------------
+# M7 ---------------------------------------------------------------------
 
 # Reduction
 #
@@ -384,14 +384,35 @@ plot(dag)
 
 dagitty::impliedConditionalIndependencies(dag)
 
+# M8 ---------------------------------------------------------------------
 
+dag <- dagitty::dagitty('dag {
+H0 [pos="0,0"]
+H1 [pos="1,0"]
+M [latent, pos="1.5,1"]
+F [pos="2,0"]
+T [pos="3,0"]
+H0 -> H1 <- M -> F <- T
+}')
+plot(dag)
 
+set.seed(71)
+# H0 indep
+# M  indep
+# T  indep
+# H1 = f(M,H0)
+# F = f(M,T)
+N <- 1e3
+H0 <- rnorm(N) 
+T <- sample(0:1,N,replace=TRUE) 
+M <- rbinom(N, 1, .5)
+F <- rbinom(N, 1, prob=0.5-T*0.4 + 0.4*M)
+H1 <- H0 * rnorm(N, 5 + 3*M)
+d2 <- data.frame(H0, H1, T, M, F)
 
-
-
-
-
-
+# Reduction
+#
+dat_ls <- list(N = nrow(d2), h0=d2$H0, h1=d2$H1, T=d2$T, F=d2$F)
 
 
 
