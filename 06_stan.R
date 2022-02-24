@@ -438,13 +438,15 @@ plot(d$happiness~d$age, pch=20, col=ifelse(d$married, "blue", "black"))
 #
 d2 <- d[d$age>17,] # adults only!
 
-# Rescaling
+# Data wrangling 
 #
+# Rescale A
 min_A <- 18 ; max_A <- 65
 range_A <- max_A-min_A
 d2$A <- (d2$age - min_A)/(range_A)
-
 summary(d2$A)
+# Marriage ID
+d2$MID <- d2$married + 1
 
 # M9 ----------------------------------------------------------------------
 
@@ -461,15 +463,86 @@ for(i in seq(100)) abline(a=0, b[i])
 # mu = alpha[mid[i]] + beta_A * A
 # alpha ~ normal(0,0)
 # beta_A ~ normal(0,1)
-# beta_M ~ normal(0,2)
+
+# Reduction
+#
+n <- nrow(d2) ; l <- 2
+dat_ls <- list(n=as.integer(n), l=as.integer(l), H=as.numeric(d2$happiness),
+               MID=as.integer(d2$MID), A=as.numeric(d2$age))
+str(dat_ls)
+
+# Fitting 
+#
+file <- file.path(getwd(), "stan", "6", "9.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format="data.frame")  
+  
+# M10 ---------------------------------------------------------------------
+
+# Model sketch 
+#
+# H ~ normal(mu, sigma)
+# mu = alpha + beta_A * A
+# alpha ~ normal(0,0)
+# beta_A ~ normal(0,1)
+
+# Reduction
+#
+n <- nrow(d2) ; l <- 2
+dat_ls <- list(n=as.integer(n), l=as.integer(l), H=as.numeric(d2$happiness),
+               MID=as.integer(d2$MID), A=as.numeric(d2$age))
+str(dat_ls)
+
+# Fitting 
+#
+file <- file.path(getwd(), "stan", "6", "10.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# The haunted dag
+#  
+
+dag <- dagitty::dagitty('dag {
+G [pos="0,0"]
+P [pos="1,0"]
+C [pos="0,1"]
+C <- G -> P -> C
+                        }')
+plot(dag)
+
+dag <- dagitty::dagitty('dag {
+G [pos="0,0"]
+P [pos="1,0"]
+C [pos="0,1"]
+U [pos="1,1"]
+C <- G -> P -> C
+C <- U -> P
+
+                        }')
+plot(dag)
+
+# Functional relationships
+#
+# G
+# U
+# P=f(G,U)
+# C=f(G,P,U)
 
 
 
 
-
-
-
-
-
-
-
+  
