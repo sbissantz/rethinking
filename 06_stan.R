@@ -525,10 +525,10 @@ C <- G -> P -> C
 plot(dag)
 
 dag <- dagitty::dagitty('dag {
-G [pos="0,0"]
+G [exposure, pos="0,0"]
 P [pos="1,0"]
-C [pos="0,1"]
-U [pos="1,1"]
+C [outcome, pos="0,1"]
+U [latent,pos="1,1"]
 C <- G -> P -> C
 C <- U -> P
 
@@ -536,13 +536,75 @@ C <- U -> P
 plot(dag)
 
 # Functional relationships
-#
-# G
-# U
+# G indep.
+# U indep
 # P=f(G,U)
-# C=f(G,P,U)
+# C=f(G,P,U) ; 
+# Pre-set effects 
+b_GP <- 1
+b_GC <- 0
+b_PC <- 1
+b_UC <- 2
+b_UP <- 2
+
+# Simulate data
+#
+set.seed(1)
+N <- 1e3
+U <- rbinom(N, 1, prob=.5)
+G <- rnorm(N)
+P <- rnorm(N, b_UP*U + b_GP*G)
+C <- rnorm(N, b_GC*G + b_PC*P + b_UC*U)
+d <- data.frame(G, P, C)
+pairs(d)
+
+# 11 ----------------------------------------------------------------------
+
+# Model Sketch (..trying to be clever)
+# 
+# C_i ~ normal(mu_i, sigma)
+# mu_i = alpha + beta_G*G + beta_P*P
+# alpha ~ normal(0,0.2) 
+# beta_G ~ normal(0, 0.5)
+# beta_P ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+#
+# NOTE: dagitty suggests NOT to stratify by P
+dagitty::adjustmentSets(dag)
+ 
+# Reduction
+#
+dat_ls <- list(n=nrow(d), C=C, P=P, G=G)
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "6", "11.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# 12 ----------------------------------------------------------------------
+
+#FAILED
+
+# Reduction
+#
+dat_ls <- list(n=nrow(d), l=2, U=U, C=C, P=P, G=G)
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "6", "12.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
 
 
 
-
-  
