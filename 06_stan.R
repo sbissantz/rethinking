@@ -551,7 +551,7 @@ b_UP <- 2
 #
 set.seed(1)
 N <- 1e3
-U <- rbinom(N, 1, prob=.5)
+U <- rbinom(N, 1, prob=.5) + 1
 G <- rnorm(N)
 P <- rnorm(N, b_UP*U + b_GP*G)
 C <- rnorm(N, b_GC*G + b_PC*P + b_UC*U)
@@ -589,11 +589,16 @@ fit$print()
 
 # 12 ----------------------------------------------------------------------
 
-#FAILED
+# C_i ~ normal(mu_i, sigma)
+# mu_i = alpha[U[i]] + beta_G*G + beta_P*P
+# alpha ~ normal(0,0.2) 
+# beta_G ~ normal(0, 0.5)
+# beta_P ~ normal(0, 0.5)
+# sigma ~ exponential(1)
 
 # Reduction
 #
-dat_ls <- list(n=nrow(d), l=2, U=U, C=C, P=P, G=G)
+dat_ls <- list(n=nrow(d), k=2, U=U, C=C, P=P, G=G)
 
 # Fitting
 #
