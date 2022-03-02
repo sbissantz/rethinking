@@ -1,28 +1,30 @@
 data {
   int<lower=0> n;
-  int<lower=0> l;
+  int<lower=0> k;
   vector[n] C;
   vector[n] P;
   vector[n] G;
-  int U[l];
+  int U[n];
 }
 
 parameters {
-  vector[l] alpha;
-  real beta_G;
-  real beta_P;
+  vector[k] alpha;
+  real beta_CG;
+  real beta_CP;
   real<lower=0> sigma;
 }
 
 model {
-  vector[n] mu;
-  alpha[l] ~ normal(0, 0.2);
-  beta_G ~ normal(0, 0.5);
-  beta_P ~ normal(0, 0.5);
+  alpha[k] ~ normal(0, 0.2);
+  beta_CG ~ normal(0, 0.5);
+  beta_CP ~ normal(0, 0.5);
   sigma ~ exponential(1);
+  
+  vector[n] mu;
   for(i in 1:n) { 
-    mu[i] = alpha[U[i]] + beta_G*G[i] + beta_P*P[i];
+    mu[i] = alpha[U[i]] + beta_CG*G[i] + beta_CP*P[i];
   }
+
   C ~ normal(mu, sigma);
 }
 
