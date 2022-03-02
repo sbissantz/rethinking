@@ -980,3 +980,56 @@ lm(d$Divorce ~ d$Marriage)
 lm(d$Divorce ~ d$Marriage + d$MedianAgeMarriage)
 # Effect greatly does diminish! 
 
+# 6M2 ---------------------------------------------------------------------
+
+# Draw a DAG
+#
+dag <- dagitty::dagitty("dag{X -> Z -> Y}")
+plot(dag)
+
+# Fake data 
+#
+N <- 1e2
+b_XZ <- 5
+b_ZY <- 0
+X <- rnorm(N)
+Z <- rnorm(N, b_XZ*X)
+Y <- rnorm(N, b_ZY*Z)
+d <- data.frame(X,Z,Y)
+round(cor(d), digits=2)
+
+# Model sketch
+#
+# Y ~ normal(mu, sigma)
+# mu_i = alpha + beta_1* X_i + beta_2*Z_i
+# alpha ~ normal(0.0.2)
+# beta_1 ~ normal(0.0.5)
+# beta_2 ~ normal(0.0.5)
+# sigma ~ exponential(1)
+
+# Reduction
+#
+dat_ls <- list(N=nrow(d), X=X, Y=Y, Z=Z)
+
+# Fitting
+#
+file <- file.path(getwd(), "stan", "exercises", "mdl_6M2.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Sample
+#
+samples <- fit$draws(format="data.frame")
+
+# PCOVMAT
+#
+cor(samples$beta_X, samples$beta_Z)
+
+
+
+
