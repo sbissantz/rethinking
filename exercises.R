@@ -990,11 +990,9 @@ plot(dag)
 # Fake data 
 #
 N <- 1e2
-b_XZ <- 5
-b_ZY <- 0
 X <- rnorm(N)
-Z <- rnorm(N, b_XZ*X)
-Y <- rnorm(N, b_ZY*Z)
+Z <- rnorm(N, 10*X)
+Y <- rnorm(N, 1*Z)
 d <- data.frame(X,Z,Y)
 round(cor(d), digits=2)
 
@@ -1021,15 +1019,3 @@ fit <- mdl$sample(dat_ls)
 #
 fit$cmdstan_diagnose()
 fit$print()
-
-# Sample
-#
-samples <- fit$draws(format="data.frame")
-
-# PCOVMAT
-#
-cor(samples$beta_X, samples$beta_Z)
-
-
-
-
