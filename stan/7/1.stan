@@ -7,11 +7,14 @@ data {
 
 parameters {
   real alpha;
-  real<lower=0> beta;
+  real beta_M;
   real<lower=0> sigma;
 }
 
 model {
-  B ~ normal(mu, sigma);
+  B ~ normal(alpha + beta_M * M, sigma);
+  alpha ~ normal(0, 0.2);
+  beta_M ~ normal(0, 0.5);
+  sigma ~ exponential(1);
 }
 

@@ -25,10 +25,30 @@ d$B <- with(d, (mass - mean(brain))/mean(brain))
 # B_i ~ Normal(mu_i, sigma)
 # mu_i = alpha + beta_M * M_i
 # alpha ~ normal(0,0.1)
-# beta_M ~ lognormal(0,2)
+# beta_M ~ normal(0,5)
 # sigma ~ exponential(1)
 
+# PPD
+#
+N <- 5e2
+alpha <- rnorm(N,0,0.1)
+M <- seq(-2,2, length.out=N)
+beta_M <- rnorm(N, 0,0.5)
+mu <- alpha + beta_M*M
+sigma <- rexp(N, 1)
+B_tilde <- rnorm(N, mu, sigma)
 
+plot(B_tilde)
+
+
+
+# Reduction
+#
+dat_ls <- list(B=d$B, M=d$M)
+
+ 
+file <- file.path(getwd(), "stan", "7", "1.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 
 
 
