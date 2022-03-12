@@ -40,7 +40,7 @@ B_tilde <- rnorm(N, mu, sigma)
 
 plot(B_tilde)
 
-
+?scale
 
 # Reduction
 #
@@ -49,6 +49,33 @@ dat_ls <- list(B=d$B, M=d$M)
  
 file <- file.path(getwd(), "stan", "7", "1.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+
+
+
+x <- rnorm(1e6,0,1)
+summary(x)
+summary((x - min(x)) / (max(x)-min(x)))
+summary((x / abs(max(x))))
+
+
+
+x <- runif(1e6, max=10)
+summary(x)
+summary(x/max(x))
+summary(x-min(x))/(max(x)-min(x))
+
+x <- rnorm(1e6)
+summary((x - min(x)) / (max(x)-min(x)))
+summary(x / max(x))
+
+
+
+
+
+
+
+
+
 
 
 
