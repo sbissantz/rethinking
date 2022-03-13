@@ -15,66 +15,70 @@ d <- data.frame(species=sppnames, brain=brainvolcc, mass=masskg)
 plot(d$mass, d$brain, ylab="brain volume (cc)", xlab="body mass (kg)", pch=20)
 text(x=masskg, y=brainvolcc+50, sppnames)
 
-# Standardize variables
+# Rescale variables
 #
+# Standardize
 d$M <- with(d, (mass - mean(mass))/sd(mass))
-d$B <- with(d, (mass - mean(brain))/mean(brain))
+# Normalize
+d$B <- with(d, brain/mean(brain))
 
 # Model sketch
-#
+# (1)
 # B_i ~ Normal(mu_i, sigma)
 # mu_i = alpha + beta_M * M_i
 # alpha ~ normal(0,0.1)
 # beta_M ~ normal(0,5)
 # sigma ~ exponential(1)
 
-# PPD
-#
-N <- 5e2
-alpha <- rnorm(N,0,0.1)
-M <- seq(-2,2, length.out=N)
-beta_M <- rnorm(N, 0,0.5)
-mu <- alpha + beta_M*M
-sigma <- rexp(N, 1)
-B_tilde <- rnorm(N, mu, sigma)
-
-plot(B_tilde)
-
-?scale
-
 # Reduction
 #
-dat_ls <- list(B=d$B, M=d$M)
-
+dat_ls <- list(N=nrow(d), B=d$B, M=d$M)
  
+# Fit the model
+#
 file <- file.path(getwd(), "stan", "7", "1.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format="data.frame")
+
+#
+# REDO
+#
+
+# Simulate 
+#
+N <- 4e3
+calc_mu <- function(M) {
+    with(samples, alpha + beta_M*M)
+}
+x_seq <- seq(-2,2, length.out=N)
+mu <- vapply(x_seq,calc_mu,FUN.VALUE=numeric(N))
+mu_mean <- colMeans(mu)
+plot(mu_mean)
+
+sim_B <- function(M){
+    with(samples, abs(rnorm(100, mean=alpha + beta_M*M, sd=sigma)))
+}
+x_seq <- seq(-3,3, length.out=N)
+B_tilde <- vapply(x_seq, sim_B, FUN.VALUE=numeric(100))
+
+
+plot(d$B ~ d$M, pch=20, col=scales::alpha("black", .3))
+
+for(i in 1:100) lines(x_seq, mu_mean[i,], col=scales::alpha("white", .4), lwd=2)
+lines(x_seq, mu_mean, lwd=3)
 
 
 
-x <- rnorm(1e6,0,1)
-summary(x)
-summary((x - min(x)) / (max(x)-min(x)))
-summary((x / abs(max(x))))
-
-
-
-x <- runif(1e6, max=10)
-summary(x)
-summary(x/max(x))
-summary(x-min(x))/(max(x)-min(x))
-
-x <- rnorm(1e6)
-summary((x - min(x)) / (max(x)-min(x)))
-summary(x / max(x))
-
-
-
-
-
-
-
-
+for(i in 1:100) lines(x_seq, B_tilde[i,], col=scales::alpha("steelblue", .1))
 
 
 

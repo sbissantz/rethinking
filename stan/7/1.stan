@@ -1,4 +1,3 @@
-// The input data is a vector 'y' of length 'N'.
 data {
   int<lower=0> N;
   vector[N] B;
@@ -14,7 +13,7 @@ parameters {
 model {
   B ~ normal(alpha + beta_M * M, sigma);
   alpha ~ normal(0, 0.2);
-  beta_M ~ normal(0, 0.5);
+  beta_M ~ normal(0, 10);
   sigma ~ exponential(1);
 }
 
