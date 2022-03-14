@@ -20,7 +20,7 @@ text(x=masskg, y=brainvolcc+50, sppnames)
 # Standardize
 d$M <- with(d, (mass - mean(mass))/sd(mass))
 # Normalize
-d$B <- with(d, brain/mean(brain))
+d$B <- with(d, brain/max(brain))
 
 # Model sketch
 # (1)
@@ -49,39 +49,28 @@ fit$print()
 #
 samples <- fit$draws(format="data.frame")
 
+# Calculate & Simulate 
 #
-# REDO
-#
+N <- nrow(samples)
+x_seq <- seq(-3,3, length.out=N)
 
-# Simulate 
-#
-N <- 4e3
 calc_mu <- function(M) {
     with(samples, alpha + beta_M*M)
 }
-x_seq <- seq(-2,2, length.out=N)
-mu <- vapply(x_seq,calc_mu,FUN.VALUE=numeric(N))
-mu_mean <- colMeans(mu)
-plot(mu_mean)
-
-sim_B <- function(M){
-    with(samples, abs(rnorm(100, mean=alpha + beta_M*M, sd=sigma)))
+sim_B <- function(M, N){
+    with(samples, abs(rnorm(N, mean=alpha + beta_M*M, sd=sigma)))
 }
 x_seq <- seq(-3,3, length.out=N)
-B_tilde <- vapply(x_seq, sim_B, FUN.VALUE=numeric(100))
+B_tilde <- vapply(x_seq, sim_B, FUN.VALUE=numeric(N), N=N)
+mu <- vapply(x_seq, calc_mu, FUN.VALUE=numeric(N))
+mu_mean <- colMeans(mu)
 
-
+# Visualize
+#
 plot(d$B ~ d$M, pch=20, col=scales::alpha("black", .3))
-
-for(i in 1:100) lines(x_seq, mu_mean[i,], col=scales::alpha("white", .4), lwd=2)
+for(i in 1:1e2) lines(x_seq, B_tilde[i,], col=scales::alpha("steelblue", .1))
+for(i in 1:1e2) lines(x_seq, mu[i,], col=scales::alpha("white", .3), lwd=2)
 lines(x_seq, mu_mean, lwd=3)
-
-
-
-for(i in 1:100) lines(x_seq, B_tilde[i,], col=scales::alpha("steelblue", .1))
-
-
-
 
 
 

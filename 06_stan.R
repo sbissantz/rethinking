@@ -101,7 +101,7 @@ plot(samples$beta_L, samples$beta_R, pch=20)
 plot(density(samples$beta_L))
 lines(density(samples$beta_R), lty=2)
 
-# Calculate thei sum
+# Calculate the sum
 # since L=R=X, H=alpha + (beta_L + beta_R)*X
 samples$beta_LR <- samples$beta_L + samples$beta_R
 plot(density(samples$beta_LR), main="beta_L + beta_R")
