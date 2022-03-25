@@ -73,7 +73,25 @@ for(i in 1:1e2) lines(x_seq, mu[i,], col=scales::alpha("white", .3), lwd=2)
 lines(x_seq, mu_mean, lwd=3)
 
 
+# Entropy & accuracy 
+#
+H <- function(p) {
+    -sum(p * log(p))
+}
+p <- c(0.5, 0.5)
+# Shannon entropy
+H(p)
 
+# KL-divergence
+#
+DKL <- function(p, q) {
+    sum(p * log(p/q))
+}
+p <- c(0.5, 0.5) ; q <- c(0.4, 0.6)
+DKL(p,q)
 
+# lppd
+rethinking::lppd
+install.packages("rethinking")
 
 
