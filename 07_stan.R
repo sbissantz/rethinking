@@ -97,33 +97,11 @@ rethinking::lppd
 
 # lppd
 
-# 1.
+# 1. Scenario: calculate the lp within STAN and use loo 
+# See: https://mc-stan.org/loo/articles/loo2-with-rstan.html
+loo::waic(log_lik)
 
-# Calculate the log probability
-#
-
-#data {
-  #int<lower=0> N;             // number of data points
-  #int<lower=0> P;             // number of predictors (including intercept)
-  #matrix[N,P] X;              // predictors (including 1s for intercept)
-  #int<lower=0,upper=1> y[N];  // binary outcome
-#}
-#parameters {
-  #vector[P] beta;
-#}
-#model {
-  #beta ~ normal(0, 1);
-  #y ~ bernoulli_logit(X * beta);
-#}
-#generated quantities {
-  #vector[N] log_lik;
-  #for (n in 1:N) {
-    #log_lik[n] = bernoulli_logit_lpmf(y[n] | X[n] * beta);
-  #}
-#}
-
-# 2.
-
+# 2a. Scenario: calculate the lp with STAN and use rethinking
 n <- ncol(logprob)
 ns <- nrow(logprob) 
 log_sum_exp <- function (x)  { 
@@ -132,9 +110,10 @@ log_sum_exp <- function (x)  {
   xmax + log(xsum)
 }
 f <- function(i) log_sum_exp(logprob[,i]) - log(ns)
-
-# 3.
 lppd <- sapply(1:n, f)
+sum(lppd)
+
+# 2b.
 
 
 
