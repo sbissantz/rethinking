@@ -90,8 +90,57 @@ DKL <- function(p, q) {
 p <- c(0.5, 0.5) ; q <- c(0.4, 0.6)
 DKL(p,q)
 
+lps <- function(q) sum(log(q))
+
 # lppd
 rethinking::lppd
-install.packages("rethinking")
+
+# lppd
+
+# 1.
+
+# Calculate the log probability
+#
+
+#data {
+  #int<lower=0> N;             // number of data points
+  #int<lower=0> P;             // number of predictors (including intercept)
+  #matrix[N,P] X;              // predictors (including 1s for intercept)
+  #int<lower=0,upper=1> y[N];  // binary outcome
+#}
+#parameters {
+  #vector[P] beta;
+#}
+#model {
+  #beta ~ normal(0, 1);
+  #y ~ bernoulli_logit(X * beta);
+#}
+#generated quantities {
+  #vector[N] log_lik;
+  #for (n in 1:N) {
+    #log_lik[n] = bernoulli_logit_lpmf(y[n] | X[n] * beta);
+  #}
+#}
+
+# 2.
+
+n <- ncol(logprob)
+ns <- nrow(logprob) 
+log_sum_exp <- function (x)  { 
+  xmax <- max(x)
+  xsum <- sum(exp(x - xmax))
+  xmax + log(xsum)
+}
+f <- function(i) log_sum_exp(logprob[,i]) - log(ns)
+
+# 3.
+lppd <- sapply(1:n, f)
+
+
+
+
+
+
+
 
 
