@@ -33,7 +33,7 @@ d$B <- with(d, brain/max(brain))
 # Reduction
 #
 dat_ls <- list(N=nrow(d), B=d$B, M=d$M)
- 
+
 # Fit the model
 #
 file <- file.path(getwd(), "stan", "7", "1.stan")
@@ -45,28 +45,6 @@ fit <- mdl$sample(dat=dat_ls)
 fit$cmdstan_diagnose()
 fit$print()
 
-# STAN
-# for (i in 1:N) {
-#  logprob[i] = normal_lpdf(B[i] | alpha + beta_M * M[i], sigma); 
-# }
-samples <- fit$draws(format="df")  
-
-# normal_lpdf <- function(x, mean, sd) {
-#  sum(dnorm(x,mean,sd,log=TRUE))
-# } 
-
-N <- nrow(d) 
-log_lik <- vector(length = N)
-for (i in 1:nrow(d)) {
-  log_lik[i] <- with(samples, {
-    mean(dnorm(alpha + beta_M * d$M[i], sigma,log=TRUE))
-    })
-}
-log_lik
-
-
-rethinking::lppd(fit)
-  
 
 # Samples
 #
@@ -116,15 +94,7 @@ D_KL(p,q)
 lps <- function(q) sum(log(q))
 
 # lppd
-rethinking::lppd
-
-# lppd
-
-# 1. Scenario: calculate the lp within STAN and use loo 
-# See: https://mc-stan.org/loo/articles/loo2-with-rstan.html
-loo::waic(log_lik)
-
-# 2a. Scenario: calculate the lp with STAN and use rethinking
+#
 n <- ncol(logprob)
 ns <- nrow(logprob) 
 log_sum_exp <- function (x)  { 
@@ -133,16 +103,6 @@ log_sum_exp <- function (x)  {
   xmax + log(xsum)
 }
 f <- function(i) log_sum_exp(logprob[,i]) - log(ns)
-lppd <- sapply(1:n, f)
+(lppd <- sapply(1:n, f))
 sum(lppd)
-
-# 2b.
-
-
-
-
-
-
-
-
 
