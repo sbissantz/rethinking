@@ -45,6 +45,29 @@ fit <- mdl$sample(dat=dat_ls)
 fit$cmdstan_diagnose()
 fit$print()
 
+# STAN
+# for (i in 1:N) {
+#  logprob[i] = normal_lpdf(B[i] | alpha + beta_M * M[i], sigma); 
+# }
+samples <- fit$draws(format="df")  
+
+# normal_lpdf <- function(x, mean, sd) {
+#  sum(dnorm(x,mean,sd,log=TRUE))
+# } 
+
+N <- nrow(d) 
+log_lik <- vector(length = N)
+for (i in 1:nrow(d)) {
+  log_lik[i] <- with(samples, {
+    mean(dnorm(alpha + beta_M * d$M[i], sigma,log=TRUE))
+    })
+}
+log_lik
+
+
+rethinking::lppd(fit)
+  
+
 # Samples
 #
 samples <- fit$draws(format="data.frame")
@@ -84,11 +107,11 @@ H(p)
 
 # KL-divergence
 #
-DKL <- function(p, q) {
+D_KL <- function(p, q) {
     sum(p * log(p/q))
 }
 p <- c(0.5, 0.5) ; q <- c(0.4, 0.6)
-DKL(p,q)
+D_KL(p,q)
 
 lps <- function(q) sum(log(q))
 
