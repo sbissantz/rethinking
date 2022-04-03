@@ -106,3 +106,43 @@ f <- function(i) log_sum_exp(logprob[,i]) - log(ns)
 (lppd <- sapply(1:n, f))
 sum(lppd)
 
+# lppd
+# ...pure R version (no stan)
+#
+n_samples <- 1e3
+n_cases <- nrow(d)
+
+logprob <- vapply(seq(n_samples), 
+                  function(s) { 
+                    mu <- samples$alpha[s] + samples$beta_M[s] * d$M
+                    dnorm(d$M, mu, samples$sigma[s], log=TRUE)
+                  }, FUN.VALUE=numeric(n_cases))
+
+log_sum_exp <- function (x)  { 
+  xmax <- max(x)
+  xsum <- sum(exp(x - xmax))
+  xmax + log(xsum)
+}
+
+lppd <- vapply(seq(n_cases), 
+               function(i) log_sum_exp(logprob[i,] - log(n_samples)),
+               FUN.VALUE=numeric(1))
+
+# Effective number of parameters
+#
+p_WAIC <- vapply(1:n_cases, 
+                 function(i) var(logprob[i,]),
+                 FUN.VALUE=numeric(1))
+ 
+-2*(sum(lppd) - sum(p_WAIC))
+
+# WAIC standard error
+#
+waic_vec <- -2* (lppd - p_WAIC)
+sqrt(n_cases * var(waic_vec))
+
+
+
+
+
+
