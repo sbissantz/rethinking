@@ -61,8 +61,3 @@ plot(NULL, xlim=c(-0.5,1.5), ylim=c(0,18), type="n", xlab="Relative plausibilty"
 plot_ls <- list(beta_real_1 = beta_real_1,  beta_fake_1 = beta_fake_1, 
                 beta_real_2 = beta_real_2,  beta_fake_2 = beta_fake_2)
 mapply(dlayer, plot_ls, as.list(names(plot_ls)))
-
-
-
-
-
