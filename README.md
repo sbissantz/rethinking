@@ -13,14 +13,19 @@ For the leftovers, the approach stays the same. To go forward in my
 psychometric modeling, I'll recode Rov Levy's and Robert J. Mislevys's
 monograph *Bayesian Psychometric Modeling*[^2]. They earned critiques because
 they (still) used Gibbs sampling (specifically: WinBugs). That's a dinosaur.
-Stan, instead, is a state-of-the-art battle station utilizing Hamiltonian Monte
-Carlo (HMC). Its diagnostic information is irreplaceable. Modeling the hell out
+Stan[^3], instead, is a state-of-the-art battle station utilizing Hamiltonian Monte
+Carlo[^4]. Its diagnostic information is irreplaceable. Modeling the hell out
 of your statistical problems, Stan keeps you on track. Lastly, I put my hands
-on Gelman et al.'s 2013 masterpiece *Bayesian Data Analysis*[^3]. I hope
+on Gelman et al.'s 2013 masterpiece *Bayesian Data Analysis*[^5]. I hope
 they'll release a new version of the book before I need to buy it.
 
 [^1]: https://github.com/rmcelreath/rethinking
 
 [^2]: http://bayespsychometrics.com/
 
-[^3]: http://www.stat.columbia.edu/~gelman/book/
+[^3]: https://mc-stan.org/
+
+[^3]: https://mc-stan.org/docs/2_29/reference-manual/hamiltonian-monte-carlo.html
+
+[^4]: http://www.stat.columbia.edu/~gelman/book/
+
