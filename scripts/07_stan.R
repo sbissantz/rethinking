@@ -36,7 +36,9 @@ dat_ls <- list(N=nrow(d), B=d$B, M=d$M)
 
 # Fit the model
 #
-file <- file.path(getwd(), "stan", "7", "1.stan")
+
+path <- "/home/steven/projects/stanmisc"
+file <- file.path(path, "stan", "7", "1.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(dat=dat_ls)
 
@@ -49,6 +51,10 @@ fit$print()
 # Samples
 #
 samples <- fit$draws(format="data.frame")
+
+stanfit <- rstan::read_stan_csv(fit$output_files())
+log_lik <- fit$draws("logprob")
+
 
 # Calculate & Simulate 
 #
@@ -91,9 +97,28 @@ D_KL <- function(p, q) {
 p <- c(0.5, 0.5) ; q <- c(0.4, 0.6)
 D_KL(p,q)
 
-lps <- function(q) sum(log(q))
+# Cross entropy
+#
+H2 <- function(p, q) {
+  -sum(p*log(q))
+}
+# Cross entropy
+H2(p,q) 
 
-# lppd
+# Test
+#
+# cross entropy - shanonen entropy = KL divergence
+all.equal(H2(p,q) - H(p), D_KL(p,q))
+# [1] TRUE
+
+# Log-probability score
+# 
+S <- function(q) sum(log(q))
+# Log-probability score
+S(q)
+
+# Bayesian log-score (lppd)
+# ..to work with Stan samples
 #
 n <- ncol(logprob)
 ns <- nrow(logprob) 
@@ -106,8 +131,8 @@ f <- function(i) log_sum_exp(logprob[,i]) - log(ns)
 (lppd <- sapply(1:n, f))
 sum(lppd)
 
-# lppd
-# ...pure R version (no stan)
+# Bayesian log-score (lppd)
+# ...pure R version (no Stan)
 #
 n_samples <- 1e3
 n_cases <- nrow(d)
@@ -118,6 +143,8 @@ logprob <- vapply(seq(n_samples),
                     dnorm(d$M, mu, samples$sigma[s], log=TRUE)
                   }, FUN.VALUE=numeric(n_cases))
 
+# ..for efficiency 
+#
 log_sum_exp <- function (x)  { 
   xmax <- max(x)
   xsum <- sum(exp(x - xmax))
@@ -133,13 +160,33 @@ lppd <- vapply(seq(n_cases),
 p_WAIC <- vapply(1:n_cases, 
                  function(i) var(logprob[i,]),
                  FUN.VALUE=numeric(1))
- 
+
+# Deviance
+#
 -2*(sum(lppd) - sum(p_WAIC))
 
 # WAIC standard error
 #
 waic_vec <- -2* (lppd - p_WAIC)
 sqrt(n_cases * var(waic_vec))
+
+# CV (LOOCV)
+# ..to hard to implement it! 
+# ..use Aki Vethari's package loo & Stan
+#
+
+# Note: PSIS works only over loo
+#
+ll_matrix <- loo::extract_log_lik(stanfit , merge_chains=FALSE )
+
+
+rel_n_eff <- loo::relative_eff(exp(log_lik))
+
+rel_n_eff <- loo::relative_eff(exp(ll_matrix))
+loo_list <- suppressWarnings( loo::loo( ll_matrix , r_eff = rel_n_eff ) )
+looIC <- as.vector( loo_list$pointwise[,4] )
+lppd <- as.vector( loo_list$pointwise[,1] )
+pD <- as.vector( loo_list$pointwise[,3] )
 
 
 
