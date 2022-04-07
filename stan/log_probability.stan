@@ -1,5 +1,6 @@
-# Calculate the log probability
-#
+//
+// Calculate the log probability
+//
 data {
   int<lower=0> N;             // number of data points
   int<lower=0> P;             // number of predictors (including intercept)
