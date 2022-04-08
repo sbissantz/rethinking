@@ -94,3 +94,11 @@ plot(pareto_k, pch=20) ; abline(h=0.5, lty=2)
 # ..accounted for overfitting risk
 #
 -2*(sum(lppd) - sum(p_loo))
+
+# TODO: Check correctness
+# PSIS standard error
+#
+n_cases <- nrow(d)
+cv_vec <- -2*(lppd - p_loo)
+sqrt(n_cases * var(cv_vec))
+
