@@ -2,42 +2,9 @@
 # Overfitting 
 #
 
-# Data
+# Preparation
 #
 source("prep.R")
-
-# Modifications 
-#
-# Standardize
-d$M <- with(d, (mass - mean(mass))/sd(mass))
-# Normalize
-d$B <- with(d, brain/max(brain))
-
-# Reduction
-#
-dat_ls <- list(N=nrow(d), B=d$B, M=d$M)
-
-# Model sketch
-#
-# B_i ~ Normal(mu_i, sigma)
-# mu_i = alpha + beta_M * M_i
-# alpha ~ normal(0,0.1)
-# beta_M ~ normal(0,5)
-# sigma ~ exponential(1)
-path <- "~/projects/stanmisc/wofls/"
-file <- file.path(path, "model.stan")
-
-# Fitting
-#
-# Compile the Stan program
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-# Fit the model
-fit <- mdl$sample(dat=dat_ls)
-
-# Diagnostics
-#
-fit$cmdstan_diagnose()
-fit$print()
 
 # Samples
 #
@@ -73,19 +40,19 @@ loo_ls$pointwise
 
 # LOOIC (pointwise)
 #
-(looIC <- loo_ls$pointwise[,4])
+(looIC <- loo_ls$pointwise[,"looic"])
 # sum(looIC) yields: loo_ls$estimates "looic"
 
 # lppd (pointwise)
-(lppd <-  loo_ls$pointwise[,1]) # sum(lppd)
+(lppd <-  loo_ls$pointwise[,"elpd_loo"]) # sum(lppd)
 # sum(lppd) yields: loo_ls$estimates "elpd_loo"
 
 # Penalty term (McElreath: pD)
-(p_loo <-  loo_ls$pointwise[,3])
+(p_loo <-  loo_ls$pointwise[,"p_loo"])
 # sum(p_loo) yields: loo_ls$estimates "p_loo"
 
 # Pareto smothed importance weights
-pareto_k <- loo_ls$pointwise[,5]
+pareto_k <- loo_ls$pointwise[,"influence_pareto_k"]
 # Visualize pareto k diagnostics
 plot(pareto_k, pch=20) ; abline(h=0.5, lty=2)
 
