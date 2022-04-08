@@ -2,137 +2,16 @@
 # WAIC 
 #
 
-# Type in data
+# Preperation
 #
-sppnames <- c("afarensis", "africanus", "habilits", "boisei", "rudolfensis",
-              "ergaster", "sapiens")
-brainvolcc <- c(438, 452, 612, 521, 752, 871, 1350)
-masskg <- c(37.0, 35.5, 34.5, 41.5, 55.5, 61.0, 53.5)
-d <- data.frame(species=sppnames, brain=brainvolcc, mass=masskg)
-
-# Visualize
-#
-plot(d$mass, d$brain, ylab="brain volume (cc)", xlab="body mass (kg)", pch=20)
-text(x=masskg, y=brainvolcc+50, sppnames)
-
-# Rescale variables
-#
-# Standardize
-d$M <- with(d, (mass - mean(mass))/sd(mass))
-# Normalize
-d$B <- with(d, brain/max(brain))
-
-# Model sketch
-# (1)
-# B_i ~ Normal(mu_i, sigma)
-# mu_i = alpha + beta_M * M_i
-# alpha ~ normal(0,0.1)
-# beta_M ~ normal(0,5)
-# sigma ~ exponential(1)
-
-# Reduction
-#
-dat_ls <- list(N=nrow(d), B=d$B, M=d$M)
-
-# Fit the model
-#
-
-path <- "/home/steven/projects/stanmisc"
-file <- file.path(path, "stan", "7", "1.stan")
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(dat=dat_ls)
-
-# Diagnostics
-#
-fit$cmdstan_diagnose()
-fit$print()
-
+source("prep.R")
 
 # Samples
 #
+# Extract samples
 samples <- fit$draws(format="data.frame")
 
-stanfit <- rstan::read_stan_csv(fit$output_files())
-log_lik <- fit$draws("logprob")
-
-
-# Calculate & Simulate 
-#
-N <- nrow(samples)
-x_seq <- seq(-3,3, length.out=N)
-
-calc_mu <- function(M) {
-    with(samples, alpha + beta_M*M)
-}
-sim_B <- function(M, N){
-    with(samples, abs(rnorm(N, mean=alpha + beta_M*M, sd=sigma)))
-}
-x_seq <- seq(-3,3, length.out=N)
-B_tilde <- vapply(x_seq, sim_B, FUN.VALUE=numeric(N), N=N)
-mu <- vapply(x_seq, calc_mu, FUN.VALUE=numeric(N))
-mu_mean <- colMeans(mu)
-
-# Visualize
-#
-plot(d$B ~ d$M, pch=20, col=scales::alpha("black", .3))
-for(i in 1:1e2) lines(x_seq, B_tilde[i,], col=scales::alpha("steelblue", .1))
-for(i in 1:1e2) lines(x_seq, mu[i,], col=scales::alpha("white", .3), lwd=2)
-lines(x_seq, mu_mean, lwd=3)
-
-
-# Entropy & accuracy 
-#
-H <- function(p) {
-    -sum(p * log(p))
-}
-p <- c(0.5, 0.5)
-# Shannon entropy
-H(p)
-
-# KL-divergence
-#
-D_KL <- function(p, q) {
-    sum(p * log(p/q))
-}
-p <- c(0.5, 0.5) ; q <- c(0.4, 0.6)
-D_KL(p,q)
-
-# Cross entropy
-#
-H2 <- function(p, q) {
-  -sum(p*log(q))
-}
-# Cross entropy
-H2(p,q) 
-
-# Test
-#
-# cross entropy - shanonen entropy = KL divergence
-all.equal(H2(p,q) - H(p), D_KL(p,q))
-# [1] TRUE
-
-# Log-probability score
-# 
-S <- function(q) sum(log(q))
-# Log-probability score
-S(q)
-
-# Bayesian log-score (lppd)
-# ..to work with Stan samples
-#
-n <- ncol(logprob)
-ns <- nrow(logprob) 
-log_sum_exp <- function (x)  { 
-  xmax <- max(x)
-  xsum <- sum(exp(x - xmax))
-  xmax + log(xsum)
-}
-f <- function(i) log_sum_exp(logprob[,i]) - log(ns)
-(lppd <- sapply(1:n, f))
-sum(lppd)
-
-# Bayesian log-score (lppd)
-# ...pure R version (no Stan)
+# 1. Create lppd in R (no generated quantities in STAN)
 #
 n_samples <- 1e3
 n_cases <- nrow(d)
@@ -150,47 +29,100 @@ log_sum_exp <- function (x)  {
   xsum <- sum(exp(x - xmax))
   xmax + log(xsum)
 }
-
 lppd <- vapply(seq(n_cases), 
                function(i) log_sum_exp(logprob[i,] - log(n_samples)),
                FUN.VALUE=numeric(1))
 
+# 2. Create the lppd (with generated quantities in STAN)
+#
+
+# log-likelihood matrix
+log_L <- fit$draws("logprob", format="matrix")
+
+# ..to work with Stan samples
+#
+n <- ncol(log_L)
+ns <- nrow(log_L) 
+log_sum_exp <- function (x)  { 
+  xmax <- max(x)
+  xsum <- sum(exp(x - xmax))
+  xmax + log(xsum)
+}
+f <- function(i) log_sum_exp(log_L[,i]) - log(ns)
+(lppd <- vapply(1:n, f, FUN.VALUE=numeric(1)))
+sum(lppd)
+
+# ------------
+
 # Effective number of parameters
 #
 p_WAIC <- vapply(1:n_cases, 
-                 function(i) var(logprob[i,]),
+                 function(i) var(log_L[,i]),
                  FUN.VALUE=numeric(1))
 
-# Deviance
+# TODO: Check correctness
+# OOS Deviance
+# ..accounted for overfitting risk
 #
 -2*(sum(lppd) - sum(p_WAIC))
 
+# TODO: Check correctness
 # WAIC standard error
 #
-waic_vec <- -2* (lppd - p_WAIC)
+n_cases <- nrow(d)
+waic_vec <- -2*(lppd - p_WAIC)
 sqrt(n_cases * var(waic_vec))
 
-# CV (LOOCV)
-# ..to hard to implement it! 
-# ..use Aki Vethari's package loo & Stan
+# -----------------------------------------------------------------------------
+
+#
+# 3a. Create a "stanfit" 
+# Note: to extract_log_lik using loo elements must be names "log_lik"
+# stanfit <- rstan::read_stan_csv(fit$output_files())
+# LL <- loo::extract_log_lik(stanfit , merge_chains=FALSE )
 #
 
-# Note: PSIS works only over loo
+# 3a. Create a "stanfit" 
+# Note: same effect as loo::extract_log_lik()
+# ..requires an array
+log_L <- fit$draws("logprob")
+waic_ls <- loo::waic(log_L)
+
+# WAIC estimates (summary)
+waic_ls$estimates
+# WAIC (pointwise)
+waic_ls$pointwise
+
+# LOOIC (pointwise)
 #
-ll_matrix <- loo::extract_log_lik(stanfit , merge_chains=FALSE )
+(waic <- waic_ls$pointwise[,"waic"])
+# sum(looIC) yields: loo_ls$estimates "looic"
 
+# lppd (pointwise)
+(lppd <-  waic_ls$pointwise[,"elpd_waic"])
+# sum(waic) yields: waic_ls$estimates "waic"
 
-rel_n_eff <- loo::relative_eff(exp(log_lik))
+# Penalty term (effective number of parameters)
+(p_waic <-  waic_ls$pointwise[,"p_waic"])
+# sum(p_waic) yields: loo_ls$estimates "p_loo"
 
-rel_n_eff <- loo::relative_eff(exp(ll_matrix))
-loo_list <- suppressWarnings( loo::loo( ll_matrix , r_eff = rel_n_eff ) )
-looIC <- as.vector( loo_list$pointwise[,4] )
-lppd <- as.vector( loo_list$pointwise[,1] )
-pD <- as.vector( loo_list$pointwise[,3] )
+# Visualize p_waic diagnostics
+plot(p_waic, pch=20) ; abline(h=0.5, lty=2)
 
+# TODO: Check correctness
+# OOS Deviance
+# ..accounted for overfitting risk
+#
+-2*(sum(lppd) - sum(p_waic))
 
+# TODO: Check correctness
+# WAIC standard error
+#
+n_cases <- nrow(d)
+waic_vec <- -2*(lppd - p_waic)
+sqrt(n_cases * var(waic_vec))
 
+# -----------------------------------------------------------------------------
 
-
-
+# TODO: Big deviation between calculations! 
 
