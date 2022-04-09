@@ -23,3 +23,10 @@ model {
   }
   h1 ~ normal(mu, sigma);
 }
+
+generated quantities {
+  vector[N] log_lik;
+  for (i in 1:N) {
+    log_lik[i] = normal_lpdf(h1[i] | h0[i] * (alpha + beta_T*T[i]), sigma); 
+    }
+}

@@ -16,3 +16,10 @@ model {
   sigma ~ exponential(1);
   h1 ~ normal(mu, sigma);
 }
+
+generated quantities {
+  vector[N] log_lik;
+  for (n in 1:N) {
+    log_lik[n] = normal_lpdf(h1[n] | h0[n] * p, sigma); 
+    }
+}
