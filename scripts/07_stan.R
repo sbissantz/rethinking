@@ -1,4 +1,4 @@
-#
+
 # Overfitting 
 #
 
@@ -188,8 +188,101 @@ looIC <- as.vector( loo_list$pointwise[,4] )
 lppd <- as.vector( loo_list$pointwise[,1] )
 pD <- as.vector( loo_list$pointwise[,3] )
 
+#
+# 7.3 Model comparison
+#
 
+# Simulating Post-treatment Bias 
+#
+# Number of plants
+N <- 100
+# Initial heights
+h0 <- rnorm(N,10,2)
+# Treatments
+tx <- rep( 0:1, each=N/2 )
+# Fungus & growth
+p_fungus <- .5-tx*0.4
+fungus <- rbinom(N,1, prob=p_fungus)
+# Final heights
+h1 <- h0 + rnorm(N,5-3*fungus)
+d <- data.frame(h0=h0, tx=tx, fungus=fungus, h1=h1)
+# Reduced data list!
+dat_ls <- list(N=nrow(d), h0=d$h0, h1=d$h1)
 
+#
+# Refit M6.6
+#
 
+path <- "/home/steven/projects/stanmisc"
+# Fitting!
+file <- file.path(path, "stan", "6", "6.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat=dat_ls)
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Log-Likelihood
+#
+log_L <- fit$draws("log_lik")
+# Effective sample size!
+rel_n_eff <- loo::relative_eff(exp(log_L))
+# PSIS
+(loo_ls_1 <- loo::loo( log_L, r_eff = rel_n_eff, is_method="psis"))
+
+#
+# Refit M6.7
+#
+
+# Reduced data list
+dat_ls <- list(N=nrow(d), h0=d$h0, h1=d$h1, F=d$fungus, T=d$tx)
+path <- "/home/steven/projects/stanmisc"
+# Fitting
+file <- file.path(path, "stan", "6", "7.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Log-Likelihood
+#
+log_L <- fit$draws("log_lik")
+# Effective sample size!
+rel_n_eff <- loo::relative_eff(exp(log_L))
+# PSIS
+(loo_ls_2 <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
+
+#
+# Refit M6.8
+#
+
+# Fitting!
+path <- "/home/steven/projects/stanmisc"
+file <- file.path(path, "stan", "6", "8.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Log-Likelihood
+#
+log_L <- fit$draws("log_lik")
+# Effective sample size!
+rel_n_eff <- loo::relative_eff(exp(log_L))
+# PSIS
+(loo_ls_3 <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
+
+# 
+# Model comparison!
+#
+# Contrasts
+loo::loo_compare(loo_ls_1, loo_ls_2, loo_ls_3)
 
