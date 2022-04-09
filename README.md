@@ -25,7 +25,7 @@ they'll release a new version of the book before I need to buy it.
 
 [^3]: https://mc-stan.org/
 
-[^3]: https://mc-stan.org/docs/2_29/reference-manual/hamiltonian-monte-carlo.html
+[^4]: https://mc-stan.org/docs/2_29/reference-manual/hamiltonian-monte-carlo.html
 
-[^4]: http://www.stat.columbia.edu/~gelman/book/
+[^5]: http://www.stat.columbia.edu/~gelman/book/
 
