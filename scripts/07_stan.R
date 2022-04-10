@@ -230,7 +230,8 @@ log_L <- fit$draws("log_lik")
 # Effective sample size!
 rel_n_eff <- loo::relative_eff(exp(log_L))
 # PSIS
-(loo_ls_1 <- loo::loo( log_L, r_eff = rel_n_eff, is_method="psis"))
+(loo_ls_1 <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
+(waic_ls_1 <- loo::waic(log_L))
 
 #
 # Refit M6.7
@@ -256,6 +257,7 @@ log_L <- fit$draws("log_lik")
 rel_n_eff <- loo::relative_eff(exp(log_L))
 # PSIS
 (loo_ls_2 <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
+(waic_ls_2 <- loo::waic(log_L))
 
 #
 # Refit M6.8
@@ -279,10 +281,59 @@ log_L <- fit$draws("log_lik")
 rel_n_eff <- loo::relative_eff(exp(log_L))
 # PSIS
 (loo_ls_3 <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
+(waic_ls_3 <- loo::waic(log_L))
 
 # 
 # Model comparison!
 #
-# Contrasts
+# PSIS
 loo::loo_compare(loo_ls_1, loo_ls_2, loo_ls_3)
+# OOS elpd contras between mdl 3 and 1 
+# (Note: Sd not shown in the output above)
+loo::loo_compare(loo_ls_3, loo_ls_1)
+# WAIC
+loo::loo_compare(waic_ls_1, waic_ls_2, waic_ls_3)
+# OOS elpd contras between mdl 3 and 1 
+# (Note: Sd not shown in the output above)
+loo::loo_compare(waic_ls_1, waic_ls_2)
+
+# Note: loo compare compares the elpd differences
+#
+
+# Differences in waic (waic=-2xelpd_waic)
+#
+waic_diff_12 <- waic_ls_1$pointwise - waic_ls_2$pointwise
+n <- nrow(waic_diff_12)
+mean(waic_diff_12[,"waic"])
+(se_waic_diff_12 <- sqrt(n*var(waic_diff_12[,"waic"])))
+
+# Differences in looic (looic=-2xelpd_loo)
+#
+(loo_diff_12 <- loo_ls_1$pointwise - loo_ls_2$pointwise)
+n <- nrow(loo_diff_12)
+mean(loo_diff_12[,"looic"]) 
+(se_loo_diff_12 <- sqrt(n*var(loo_diff_12[,"looic"])))
+
+# Mc Elreath Version
+#
+# -2(lppd - p_waic)
+lppd <- waic_ls_1$pointwise[,"elpd_waic"]
+p_waic <- waic_ls_1$pointwise[,"p_waic"]
+D <- -2*(lppd - p_waic)
+sum(D) ; sqrt(n*var(D))
+# The differences in OOS Deviances
+# -2(lppd - p_waic)
+lppd_2 <- waic_ls_2$pointwise[,"elpd_waic"]
+lppd_3 <- waic_ls_3$pointwise[,"elpd_waic"]
+p_waic_2 <- waic_ls_2$pointwise[,"p_waic"]
+p_waic_3 <- waic_ls_3$pointwise[,"p_waic"]
+D_2 <- -2*(lppd_2 - p_waic_2)
+D_3 <- -2*(lppd_3 - p_waic_3)
+D_diff <- D_2 - D_3
+sum(D_diff) ; sqrt(n*var(D_diff))
+
+
+
+
+
 
