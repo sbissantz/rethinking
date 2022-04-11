@@ -15,5 +15,8 @@ model {
   sigma ~ exponential(1);
 }
 generated quantities {
-  vector[N] mu = a + b_A*A;
+ vector[N] log_lik;
+ for(i in 1:N) {
+ log_lik[i] = normal_lpdf(D[i] | a + b_A*A[i], sigma);
+ }
 }
