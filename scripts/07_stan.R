@@ -332,6 +332,106 @@ D_3 <- -2*(lppd_3 - p_waic_3)
 D_diff <- D_2 - D_3
 sum(D_diff) ; sqrt(n*var(D_diff))
 
+#
+# Finding outliers
+#
+
+library(rethinking)
+data(WaffleDivorce)
+d <- WaffleDivorce
+d$A <- scale( d$MedianAgeMarriage )
+d$D <- scale( d$Divorce )
+d$M <- scale( d$Marriage )
+
+dat_ls <- list(N=nrow(d), A=as.numeric(d$A), D=as.numeric(d$D),
+               M=as.numeric(d$M))
+
+#
+# Refit M5.1
+#
+path <- "/home/steven/projects/stanmisc"
+file <- file.path(path, "stan", "5", "1.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Sampling
+#
+log_L <- fit$draws("log_lik")
+
+# PSIS & WAIC
+#
+rel_n_eff <- loo::relative_eff(exp(log_L))
+loo_ls_1 <- loo::loo(log_L, r_eff=rel_n_eff, is_method="psis")
+waic_ls_1 <- loo::waic(log_L)
+
+# Visualize
+#
+plot(loo_ls_1$pointwise[,"influence_pareto_k"], 
+     waic_ls_1$pointwise[,"p_waic"], pch=20, col="steelblue")
+abline(h=0.5, lty=2)
+
+#
+# Refit M5.2
+#
+path <- "/home/steven/projects/stanmisc"
+file <- file.path(path, "stan", "5", "2.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Sampling
+#
+log_L <- fit$draws("log_lik")
+
+# PSIS & WAIC
+#
+rel_n_eff <- loo::relative_eff(exp(log_L))
+loo_ls_2 <- loo::loo(log_L, r_eff=rel_n_eff, is_method="psis")
+waic_ls_2 <- loo::waic(log_L)
+
+# Visualize
+#
+plot(loo_ls_2$pointwise[,"influence_pareto_k"], 
+     waic_ls_2$pointwise[,"p_waic"], pch=20, col="steelblue")
+abline(h=0.5, lty=2)
+
+#
+# Refit M5.3
+#
+path <- "/home/steven/projects/stanmisc"
+file <- file.path(path, "stan", "5", "3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Sampling
+#
+log_L <- fit$draws("log_lik")
+
+# PSIS & WAIC
+#
+rel_n_eff <- loo::relative_eff(exp(log_L))
+loo_ls_3 <- loo::loo(log_L, r_eff=rel_n_eff, is_method="psis")
+waic_ls_3 <- loo::waic(log_L)
+
+# Visualize
+#
+plot(loo_ls_3$pointwise[,"influence_pareto_k"], 
+     waic_ls_3$pointwise[,"p_waic"], pch=20, col="steelblue")
+abline(h=0.5, lty=2)
 
 
 
