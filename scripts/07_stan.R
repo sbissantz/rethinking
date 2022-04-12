@@ -375,6 +375,16 @@ plot(loo_ls_1$pointwise[,"influence_pareto_k"],
      waic_ls_1$pointwise[,"p_waic"], pch=20, col="steelblue")
 abline(h=0.5, lty=2)
 
+# D_oos
+#
+lppd <- loo_ls_1$pointwise[,"elpd_loo"]
+p_loo <- loo_ls_1$pointwise[,"p_loo"]
+OOSD <- -2*(lppd - p_loo)
+sum(OOSD)
+n_cases <- nrow(d)
+# Standard error
+sqrt(n_cases * var(OOSD))
+
 #
 # Refit M5.2
 #
@@ -402,11 +412,22 @@ waic_ls_2 <- loo::waic(log_L)
 #
 plot(loo_ls_2$pointwise[,"influence_pareto_k"], 
      waic_ls_2$pointwise[,"p_waic"], pch=20, col="steelblue")
-abline(h=0.5, lty=2)
+abline(v=0.5, lty=2)
+
+# D_oos
+#
+lppd <- loo_ls_2$pointwise[,"elpd_loo"]
+p_loo <- loo_ls_2$pointwise[,"p_loo"]
+OOSD <- -2*(lppd - p_loo)
+sum(OOSD)
+n_cases <- nrow(d)
+# Standard error
+sqrt(n_cases * var(OOSD))
 
 #
 # Refit M5.3
 #
+dat_ls <- list(N=nrow(d), K=2, D=as.numeric(d$D), X=cbind(as.numeric(d$A), M=as.numeric(d$M)))
 path <- "/home/steven/projects/stanmisc"
 file <- file.path(path, "stan", "5", "3.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
@@ -433,7 +454,46 @@ plot(loo_ls_3$pointwise[,"influence_pareto_k"],
      waic_ls_3$pointwise[,"p_waic"], pch=20, col="steelblue")
 abline(h=0.5, lty=2)
 
+# D_oos
+#
+lppd <- loo_ls_3$pointwise[,"elpd_loo"]
+p_loo <- loo_ls_3$pointwise[,"p_loo"]
+OOSD <- -2*(lppd - p_loo)
+sum(OOSD)
+n_cases <- nrow(d)
+# Standard error
+sqrt(n_cases * var(OOSD))
 
+#
+# Compare!
+#
+loo::loo_compare(loo_ls_1, loo_ls_2, loo_ls_3)
 
+waic_diff_12 <- waic_ls_1$pointwise - waic_ls_2$pointwise
+n <- nrow(waic_diff_12)
+mean(waic_diff_12[,"waic"])
+(se_waic_diff_12 <- sqrt(n*var(waic_diff_12[,"waic"])))
 
+#
+# Refit 5.3 using a t
+#
+path <- "/home/steven/projects/stanmisc"
+# Fitting!
+file <- file.path(path, "stan", "5", "3t.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Log-Likelihood
+#
+log_L <- fit$draws("log_lik")
+# Effective sample size!
+rel_n_eff <- loo::relative_eff(exp(log_L))
+# PSIS
+(loo_ls_t <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
+(waic_ls_t <- loo::waic(log_L))
 
