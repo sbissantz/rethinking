@@ -1,5 +1,5 @@
 
-# Overfitting 
+# Overfitting
 #
 
 # Type in data
@@ -56,7 +56,7 @@ stanfit <- rstan::read_stan_csv(fit$output_files())
 log_lik <- fit$draws("logprob")
 
 
-# Calculate & Simulate 
+# Calculate & Simulate
 #
 N <- nrow(samples)
 x_seq <- seq(-3,3, length.out=N)
@@ -80,7 +80,7 @@ for(i in 1:1e2) lines(x_seq, mu[i,], col=scales::alpha("white", .3), lwd=2)
 lines(x_seq, mu_mean, lwd=3)
 
 
-# Entropy & accuracy 
+# Entropy & accuracy
 #
 H <- function(p) {
     -sum(p * log(p))
@@ -103,7 +103,7 @@ H2 <- function(p, q) {
   -sum(p*log(q))
 }
 # Cross entropy
-H2(p,q) 
+H2(p,q)
 
 # Test
 #
@@ -112,7 +112,7 @@ all.equal(H2(p,q) - H(p), D_KL(p,q))
 # [1] TRUE
 
 # Log-probability score
-# 
+#
 S <- function(q) sum(log(q))
 # Log-probability score
 S(q)
@@ -121,8 +121,8 @@ S(q)
 # ..to work with Stan samples
 #
 n <- ncol(logprob)
-ns <- nrow(logprob) 
-log_sum_exp <- function (x)  { 
+ns <- nrow(logprob)
+log_sum_exp <- function (x)  {
   xmax <- max(x)
   xsum <- sum(exp(x - xmax))
   xmax + log(xsum)
@@ -137,27 +137,27 @@ sum(lppd)
 n_samples <- 1e3
 n_cases <- nrow(d)
 
-logprob <- vapply(seq(n_samples), 
-                  function(s) { 
+logprob <- vapply(seq(n_samples),
+                  function(s) {
                     mu <- samples$alpha[s] + samples$beta_M[s] * d$M
                     dnorm(d$M, mu, samples$sigma[s], log=TRUE)
                   }, FUN.VALUE=numeric(n_cases))
 
-# ..for efficiency 
+# ..for efficiency
 #
-log_sum_exp <- function (x)  { 
+log_sum_exp <- function (x)  {
   xmax <- max(x)
   xsum <- sum(exp(x - xmax))
   xmax + log(xsum)
 }
 
-lppd <- vapply(seq(n_cases), 
+lppd <- vapply(seq(n_cases),
                function(i) log_sum_exp(logprob[i,] - log(n_samples)),
                FUN.VALUE=numeric(1))
 
 # Effective number of parameters
 #
-p_WAIC <- vapply(1:n_cases, 
+p_WAIC <- vapply(1:n_cases,
                  function(i) var(logprob[i,]),
                  FUN.VALUE=numeric(1))
 
@@ -171,7 +171,7 @@ waic_vec <- -2* (lppd - p_WAIC)
 sqrt(n_cases * var(waic_vec))
 
 # CV (LOOCV)
-# ..to hard to implement it! 
+# ..to hard to implement it!
 # ..use Aki Vethari's package loo & Stan
 #
 
@@ -192,7 +192,7 @@ pD <- as.vector( loo_list$pointwise[,3] )
 # 7.3 Model comparison
 #
 
-# Simulating Post-treatment Bias 
+# Simulating Post-treatment Bias
 #
 # Number of plants
 N <- 100
@@ -283,17 +283,17 @@ rel_n_eff <- loo::relative_eff(exp(log_L))
 (loo_ls_3 <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
 (waic_ls_3 <- loo::waic(log_L))
 
-# 
+#
 # Model comparison!
 #
 # PSIS
 loo::loo_compare(loo_ls_1, loo_ls_2, loo_ls_3)
-# OOS elpd contras between mdl 3 and 1 
+# OOS elpd contras between mdl 3 and 1
 # (Note: Sd not shown in the output above)
 loo::loo_compare(loo_ls_3, loo_ls_1)
 # WAIC
 loo::loo_compare(waic_ls_1, waic_ls_2, waic_ls_3)
-# OOS elpd contras between mdl 3 and 1 
+# OOS elpd contras between mdl 3 and 1
 # (Note: Sd not shown in the output above)
 loo::loo_compare(waic_ls_1, waic_ls_2)
 
@@ -311,7 +311,7 @@ mean(waic_diff_12[,"waic"])
 #
 (loo_diff_12 <- loo_ls_1$pointwise - loo_ls_2$pointwise)
 n <- nrow(loo_diff_12)
-mean(loo_diff_12[,"looic"]) 
+mean(loo_diff_12[,"looic"])
 (se_loo_diff_12 <- sqrt(n*var(loo_diff_12[,"looic"])))
 
 # Mc Elreath Version
@@ -349,6 +349,7 @@ dat_ls <- list(N=nrow(d), A=as.numeric(d$A), D=as.numeric(d$D),
 #
 # Refit M5.1
 #
+path <- file.path(getwd(), "stanmisc")
 path <- "/home/steven/projects/stanmisc"
 file <- file.path(path, "stan", "5", "1.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
@@ -371,7 +372,7 @@ waic_ls_1 <- loo::waic(log_L)
 
 # Visualize
 #
-plot(loo_ls_1$pointwise[,"influence_pareto_k"], 
+plot(loo_ls_1$pointwise[,"influence_pareto_k"],
      waic_ls_1$pointwise[,"p_waic"], pch=20, col="steelblue")
 abline(h=0.5, lty=2)
 
@@ -388,6 +389,7 @@ sqrt(n_cases * var(OOSD))
 #
 # Refit M5.2
 #
+path <- file.path(getwd(), "stanmisc")
 path <- "/home/steven/projects/stanmisc"
 file <- file.path(path, "stan", "5", "2.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
@@ -410,7 +412,7 @@ waic_ls_2 <- loo::waic(log_L)
 
 # Visualize
 #
-plot(loo_ls_2$pointwise[,"influence_pareto_k"], 
+plot(loo_ls_2$pointwise[,"influence_pareto_k"],
      waic_ls_2$pointwise[,"p_waic"], pch=20, col="steelblue")
 abline(v=0.5, lty=2)
 
@@ -450,7 +452,7 @@ waic_ls_3 <- loo::waic(log_L)
 
 # Visualize
 #
-plot(loo_ls_3$pointwise[,"influence_pareto_k"], 
+plot(loo_ls_3$pointwise[,"influence_pareto_k"],
      waic_ls_3$pointwise[,"p_waic"], pch=20, col="steelblue")
 abline(h=0.5, lty=2)
 
