@@ -214,6 +214,7 @@ dat_ls <- list(N=nrow(d), h0=d$h0, h1=d$h1)
 #
 
 path <- "/home/steven/projects/stanmisc"
+path <- file.path(getwd(), "stanmisc")
 # Fitting!
 file <- file.path(path, "stan", "6", "6.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
@@ -240,6 +241,7 @@ rel_n_eff <- loo::relative_eff(exp(log_L))
 # Reduced data list
 dat_ls <- list(N=nrow(d), h0=d$h0, h1=d$h1, F=d$fungus, T=d$tx)
 path <- "/home/steven/projects/stanmisc"
+path <- file.path(getwd(), "stanmisc")
 # Fitting
 file <- file.path(path, "stan", "6", "7.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
@@ -265,6 +267,7 @@ rel_n_eff <- loo::relative_eff(exp(log_L))
 
 # Fitting!
 path <- "/home/steven/projects/stanmisc"
+path <- file.path(getwd(), "stanmisc")
 file <- file.path(path, "stan", "6", "8.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(dat=dat_ls)
@@ -477,7 +480,7 @@ mean(waic_diff_12[,"waic"])
 (se_waic_diff_12 <- sqrt(n*var(waic_diff_12[,"waic"])))
 
 #
-# Refit 5.3 using a t
+# Refit 5.3 using a Student's t as data distribution
 #
 path <- "/home/steven/projects/stanmisc"
 # Fitting!
@@ -498,4 +501,3 @@ rel_n_eff <- loo::relative_eff(exp(log_L))
 # PSIS
 (loo_ls_t <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
 (waic_ls_t <- loo::waic(log_L))
-
