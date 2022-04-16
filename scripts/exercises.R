@@ -1032,10 +1032,97 @@ p <- c(0.2, 0.25, 0.25, 0.3)
 
 # 7E4 ---------------------------------------------------------------------
 
-p <- c(0, rep(0.2,5)) 
--sum(p * log(p))
+# Since log(0) = -Inf the result is NaN. But using the rule of l'hopital,
+# log(0) = 0 and we can caluclate the entropy as follows:
 
-# 7M1 ---------------------------------------------------------------------
+p <- c(0, rep(0.2,5))
+-sum(p * ifelse(p==0, 0, log(p)))
+
+# 7M3 ---------------------------------------------------------------------
+
+# Simulate data
+#
+# Note: Simulate correlated variables using a cholesky factorization
+
+# Correlation matrix
+R <- matrix(c(1,0.7,0.7,1),2,2)
+# Cholesky decomposition (R=L^TL)
+L <- chol(R)
+# t(L) %*% L # since: R=L^T*L
+# Matrix of standard deviations
+sigma <- diag(c(1,2))
+# Multiply sigma with the lower triangular square root of the correlation
+# matrix: t(L)
+Lambda <- sigma %*% t(L)
+# RNG
+set.seed(123)
+N <- 1e2
+# z ~ normal(0,1)
+Z <- rbind(rnorm(N),rnorm(N))
+X <- Lambda %*% Z
+# rho
+# cor(X[1,], X[2,])
+
+
+N_sims <- 100 
+out <- matrix(ncol=2, nrow=N)
+for(i in 1:N) {
+
+# List
+#
+dat_ls <- list(N=i, x=X[1,seq(i)], y=X[2,seq(i)] )
+
+# Model sketch
+#
+# y ~ normal(mu, sigma)
+# mu = alpha + beta * X
+# alpha ~ normal(0,0.2)
+# beta ~ normal(0, 0.5)
+# sigma ~ exponential(1)
+
+# Fitting
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "exercises", "mdl_7M3.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+# log likelihood array only!
+LL <- fit$draws("log_lik")
+
+# out
+#
+
+options(mc.cores = 4)
+# PSIS
+#
+r_eff <- loo::relative_eff(exp(LL), cores=4)
+psis_ls <- loo::loo(LL, r_eff=r_eff, cores=4)
+out[i,1] <- psis_ls$estimates[1, "Estimate"]
+
+# WAIC
+#
+waic_ls <- loo::waic(LL, cores=4)
+out[i, 2] <- waic_ls$estimates[1, "Estimate"]
+}
+out
+
+plot(seq(N_sims), -2*out[,1], pch=20, cex=.4)
+    points(seq(N_sims), -2*out[,2],cex=.4)
+
+
+
+
+
+
+
 
 
 
