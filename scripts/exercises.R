@@ -1043,7 +1043,6 @@ p <- c(0, rep(0.2,5))
 # Simulate data
 #
 # Note: Simulate correlated variables using a cholesky factorization
-
 # Correlation matrix
 R <- matrix(c(1,0.7,0.7,1),2,2)
 # Cholesky decomposition (R=L^TL)
@@ -1084,6 +1083,24 @@ oosd_psis <- function(LL) {
 }
 options(mc.cores = 4)
 
+# OOSD_PSIS (N=100)
+#
+dat_ls <- list(N=N, x=X[1,], y=X[2,])
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "exercises", "mdl_7M3.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+# log likelihood array only!
+LL <- fit$draws("log_lik")
+oosd_psis(LL)
+# 
+# $sum
+# [1] 358.8503
+# 
+# $se
+# [1] 17.14617
+# 
+
 # Simulation funtion
 #
 simulatr <- function(s) {
@@ -1101,8 +1118,8 @@ out_ls <- parallel::mclapply(seq(2,N_sims), simulatr)
 
 # Visualize
 #
-plot(NULL, xlim=c(2,100), ylim=c(0,375), xlab="Observations (N)", ylab="PSIS
-     +/-SE")
+plot(NULL, xlim=c(2,100), ylim=c(0,375), xlab="Observations (N)", 
+     ylab="PSIS +/-SE")
 add_lines <- function(i) {
     y_1 <- out_ls[[i]]$sum - out_ls[[i]]$se
     y_2 <- out_ls[[i]]$sum + out_ls[[i]]$se
