@@ -9,6 +9,7 @@
 # Note: LL is actually a N x M x K array
 #
 # LL <- fit$draws("log_lik")
+options(mc.cores = 4)
 oosd_waic <- function(LL) {
   out_ls <- list()
   values <- loo::waic(LL)

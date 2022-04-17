@@ -11,6 +11,7 @@
 # OOS
 #
 # LL <- fit$draws("log_lik")
+options(mc.cores = 4)
 oosd_psis <- function(LL) {
   out_ls <- list()
   rel_n_eff <- loo::relative_eff(exp(LL))
