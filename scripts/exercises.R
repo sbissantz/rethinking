@@ -1063,69 +1063,51 @@ X <- Lambda %*% Z
 # rho
 # cor(X[1,], X[2,])
 
-
-N_sims <- 100 
-out <- matrix(ncol=2, nrow=N)
-for(i in 1:N) {
-
-# List
+# Helper function
 #
-dat_ls <- list(N=i, x=X[1,seq(i)], y=X[2,seq(i)] )
-
-# Model sketch
-#
-# y ~ normal(mu, sigma)
-# mu = alpha + beta * X
-# alpha ~ normal(0,0.2)
-# beta ~ normal(0, 0.5)
-# sigma ~ exponential(1)
-
-# Fitting
-#
-path <- "~/projects/stanmisc"
-file <- file.path(path, "stan", "exercises", "mdl_7M3.stan") 
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(dat_ls)
-
-# Diagnostics
-#
-fit$cmdstan_diagnose()
-fit$print()
-
-# Samples
-#
-# log likelihood array only!
-LL <- fit$draws("log_lik")
-
-# out
-#
-
-options(mc.cores = 4)
-# PSIS
-#
-r_eff <- loo::relative_eff(exp(LL), cores=4)
-psis_ls <- loo::loo(LL, r_eff=r_eff, cores=4)
-out[i,1] <- psis_ls$estimates[1, "Estimate"]
-
-# WAIC
-#
-waic_ls <- loo::waic(LL, cores=4)
-out[i, 2] <- waic_ls$estimates[1, "Estimate"]
+oosd_psis <- function(LL) {
+  out_ls <- list()
+  rel_n_eff <- loo::relative_eff(exp(LL))
+  values <- loo::loo(LL, r_eff=rel_n_eff, is_method="psis")
+  lppd <- values$pointwise[,"elpd_loo"]
+  p_waic <- values$pointwise[,"p_loo"]
+  # Deviance (pointwise)
+  out_ls$pointwise <- -2*(lppd - p_waic)
+  # Deviance (sum)
+  out_ls$sum <- sum(out_ls$pointwise)
+  # LL's dim: NxMxK where K equals nrow(d)
+  # ..i.e., makes "n" in "function(LL,n) where "n <- nrow(d)" redundant!
+  n_cases <- dim(LL)[3]
+  # Standard error
+  out_ls$se <- sqrt(n_cases * var(out_ls$pointwise))
+  out_ls
 }
-out
+options(mc.cores = 4)
 
-plot(seq(N_sims), -2*out[,1], pch=20, cex=.4)
-    points(seq(N_sims), -2*out[,2],cex=.4)
+# Simulation funtion
+#
+simulatr <- function(s) {
+    dat_ls <- list(N=s, x=X[1,seq(s)], y=X[2,seq(s)] )
+    path <- "~/projects/stanmisc"
+    file <- file.path(path, "stan", "exercises", "mdl_7M3.stan") 
+    mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+    fit <- mdl$sample(dat_ls)
+    # log likelihood array only!
+    LL <- fit$draws("log_lik")
+    oosd_psis(LL)
+}
+N_sims <- 100
+out_ls <- parallel::mclapply(seq(2,N_sims), simulatr)
 
-
-
-
-
-
-
-
-
-
-
-
+# Visualize
+#
+plot(NULL, xlim=c(2,100), ylim=c(0,375), xlab="Observations (N)", ylab="PSIS
+     +/-SE")
+add_lines <- function(i) {
+    y_1 <- out_ls[[i]]$sum - out_ls[[i]]$se
+    y_2 <- out_ls[[i]]$sum + out_ls[[i]]$se
+    points(i, out_ls[[i]]$sum, pch=20, cex=.5)
+    lines(c(i,i), c(y_1, y_2), lty=2)
+}
+lapply(seq(2:N), add_lines)
 
