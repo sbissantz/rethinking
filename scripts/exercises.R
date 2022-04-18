@@ -1101,7 +1101,7 @@ oosd_psis(LL)
 # [1] 17.14617
 # 
 
-# Simulation funtion
+# Simulation function
 #
 simulatr <- function(s) {
     dat_ls <- list(N=s, x=X[1,seq(s)], y=X[2,seq(s)] )
@@ -1127,4 +1127,61 @@ add_lines <- function(i) {
     lines(c(i,i), c(y_1, y_2), lty=2)
 }
 lapply(seq(2:N), add_lines)
+
+# 7M4 ---------------------------------------------------------------------
+
+# Note: Cant directly write a simulation function -- can't use map2stan
+# ...and I don't find it necessary to learn it yet. So I play arround in R.
+
+# Model sketch
+#
+# y ~ normal(mu, sigma)
+# mu = alpha + beta_x * x
+# alpha ~ normal(0,0.2)
+# beta ~ normal(0,100)
+# beta ~ normal(0,10)
+# beta ~ normal(0,1)
+# beta ~ normal(0,0.1)
+# sigma ~ exponential(1)
+
+# Reduction
+# Note: Use dat_ls from 7M3
+#
+
+# Fit
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "exercises", "mdl_7M3.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostic
+# 
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+# log likelihood array only!
+LL <- fit$draws("log_lik")
+
+# p_loo
+#
+rel_n_eff <- loo::relative_eff(exp(LL))
+values <- loo::loo(LL, r_eff=rel_n_eff, is_method="psis")
+# p_loo
+sum(values$pointwise[,"p_loo"])
+# Note: p_loo gets smalller! Since in an ordinary linear regression the sum of
+# all parameter values tends to be equal to the number of free parameters in
+# the model -- for flat priors (AIC)! 
+
+
+
+
+
+
+
+
+
+
 
