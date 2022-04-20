@@ -18,8 +18,8 @@ LL <- fit$draws("logprob")
 WAIC <- loo::waic(LL)
 lppd <-  WAIC$pointwise[,"elpd_waic"]
 p_waic <-  WAIC$pointwise[,"p_waic"]
-N <- dim(LL)[3]
 WAIC_i <- -2*(lppd-p_waic)
+N <- dim(LL)[3]
 
 sum(WAIC_i) ; sqrt(N * var(WAIC_i))
 plot(p_waic, pch=20) ; abline(h=0.5, lty=2)
@@ -44,7 +44,7 @@ LL <- fit$draws("logprob")
 # Note use WAIC$estimates to get the sum()-mary of the $pointwise values. 
 # see: WAIC$estimates & WAIC$pointwise & apply(WAIC$pointwise, 2, sum)
 
-# Log pointwise predictive density (pointwise)
+# Log pointwise predictive density 
 #
 (lppd <-  WAIC$pointwise[,"elpd_waic"])
 # Note: sum(lppd) yield the WAIC$estimate for 'elpd_waic'
