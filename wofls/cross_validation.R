@@ -1,71 +1,85 @@
 #
-# Overfitting 
+# PSIS
+#
+rm(list=ls())
+
+# Goal: estimate the out-of-sample deviance of a model.
 #
 
-# Preparation
-#
 source("prep.R")
 
-# Samples
-#
-# Extract samples
-samples <- fit$draws(format="data.frame")
-#
-# 1. Create a stanfit object
-# Note: to extract_log_lik using loo elements must be names "log_lik"
-# stanfit <- rstan::read_stan_csv(fit$output_files())
-# LL <- loo::extract_log_lik(stanfit , merge_chains=FALSE )
-#
-# 2. DIY: extract the samples and put them in an array (default) 
-# log-likelihood matrix
-log_L <- fit$draws("logprob")
 
-# CV (LOOCV)
-# ..to hard to implement! 
-# ..use loo (Vethari) 
 #
-# Get the effective sample size
-rel_n_eff <- loo::relative_eff(exp(log_L))
-
-# LOOCV -- using PSIS
-(loo_ls <- loo::loo( log_L, r_eff = rel_n_eff, is_method="psis"))
-
-# See: str(loo_ls)
+# "Daily workflow"
 #
 
-# LOO (summary)
-loo_ls$estimates
-# LOO (pointwise)
-loo_ls$pointwise
-
-# LOOIC (pointwise)
+# In a nutshell
 #
-(looIC <- loo_ls$pointwise[,"looic"])
-# sum(looIC) yields: loo_ls$estimates "looic"
 
-# lppd (pointwise)
-(lppd <-  loo_ls$pointwise[,"elpd_loo"]) # sum(lppd)
-# sum(lppd) yields: loo_ls$estimates "elpd_loo"
+LL <- fit$draws("logprob")
+rel_eff <- loo::relative_eff(exp(LL))
+PSIS <- loo::loo(LL, r_eff = rel_eff, is_method="psis")
+lppd <- PSIS$pointwise[,"elpd_loo"]
+p_psis <- PSIS$pointwise[,"p_loo"]
+PSIS_i <- -2*(lppd-p_psis)
+N <- dim(LL)[3]
 
-# Penalty term (McElreath: pD)
-(p_loo <-  loo_ls$pointwise[,"p_loo"])
-# sum(p_loo) yields: loo_ls$estimates "p_loo"
-
-# Pareto smothed importance weights
-pareto_k <- loo_ls$pointwise[,"influence_pareto_k"]
-# Visualize pareto k diagnostics
+sum(PSIS_i) ; sqrt(N * var(PSIS_i))
+pareto_k <- PSIS$pointwise[,"influence_pareto_k"]
 plot(pareto_k, pch=20) ; abline(h=0.5, lty=2)
 
-# TODO: Check correctness
-# OOS Deviance
-# ..accounted for overfitting risk
 #
--2*(sum(lppd) - sum(p_loo))
+# Documented Version
+#
 
-# TODO: Check correctness
-# PSIS standard error
+LL <- fit$draws("logprob")
+# Note: This does actually create the scaffold of a stanfit object. So we can
+# operate with the functions which use them. E.g.: loo::extract_log_lik().
+# Hint: If you use loo::extract_log_lik make sure your stan model includes
+# a 'vector[N] log_lik;'.
+
+# PSIS bundle
 #
-n_cases <- nrow(d)
-cv_vec <- -2*(lppd - p_loo)
-sqrt(n_cases * var(cv_vec))
+# MCMC effective sample size
+# exp() is mandatory: log(!)-likelihood
+rel_eff <- loo::relative_eff(exp(LL))
+(PSIS <- loo::loo(LL, r_eff = rel_eff, is_method="psis"))
+# Note use PSIS$estimates to get the sum()-mary of the $pointwise values. 
+# see: PSIS$estimates & WAIC$pointwise & apply(WAIC$pointwise, 2, sum)
+
+# Log pointwise predictive density 
+
+#
+(lppd <-  PSIS$pointwise[,"elpd_loo"])
+# Note: sum(lppd) yield the WAIC$estimate for 'elpd_loo'
+# Note: -2*sum(lppd) yield the PSIS$estimate for 'looic'
+
+# Effective number of parameters (penalty term)
+#
+(p_psis <-  PSIS$pointwise[,"p_loo"])
+# Note: sum(p_waic) yields the WAIC$estimates "p_loo"
+
+# OOS predictive accuracy (pointwise)
+# ..corrected for the overfitting risk
+#
+-2*(lppd-p_psis)
+# Note: ..to compare a single value
+-2*(sum(lppd)-sum(p_psis))
+
+# Approximate PSIS standard error 
+#
+N <- dim(LL)[3]
+# The number of cases (the sample size) is the third dimension of the array.
+# Note: you can also use: n_cases <- nrow(d)
+PSIS_i <- -2*(lppd-p_psis)
+# Approximate standard error
+sqrt(N * var(PSIS_i))
+
+# Visualize!
+#
+
+# Pareto smothed importance weights
+pareto_k <- PSIS$pointwise[,"influence_pareto_k"]
+# Visualize pareto k diagnostics
+plot(pareto_k, pch=20) ; abline(h=0.5, lty=2)
 
