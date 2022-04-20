@@ -230,6 +230,7 @@ fit$print()
 log_L <- fit$draws("log_lik")
 # Effective sample size!
 rel_n_eff <- loo::relative_eff(exp(log_L))
+head(rel_n_eff)
 # PSIS
 (loo_ls_1 <- loo::loo(log_L, r_eff = rel_n_eff, is_method="psis"))
 (waic_ls_1 <- loo::waic(log_L))
@@ -476,7 +477,7 @@ loo::loo_compare(loo_ls_1, loo_ls_2, loo_ls_3)
 
 waic_diff_12 <- waic_ls_1$pointwise - waic_ls_2$pointwise
 n <- nrow(waic_diff_12)
-mean(waic_diff_12[,"waic"])
+sum(waic_diff_12[,"waic"])
 (se_waic_diff_12 <- sqrt(n*var(waic_diff_12[,"waic"])))
 
 #
