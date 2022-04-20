@@ -2,9 +2,86 @@
 # WAIC 
 #
 
-# Preperation
+# Goal: estimate the out-of-sample deviance of a model.
 #
+
 source("prep.R")
+
+
+#
+# "Daily workflow"
+#
+
+#
+# In a nutshell
+LL <- fit$draws("logprob")
+WAIC <- loo::waic(LL)
+lppd <-  WAIC$pointwise[,"elpd_waic"]
+p_waic <-  WAIC$pointwise[,"p_waic"]
+N <- dim(LL)[3]
+WAIC_i <- -2*(lppd-p_waic)
+
+sum(WAIC_i) ; sqrt(N * var(WAIC_i))
+plot(p_waic, pch=20) ; abline(h=0.5, lty=2)
+
+
+#
+# Documented Version
+#
+
+
+# MCMC log-likelihood array
+#
+LL <- fit$draws("logprob")
+# Note: This does actually create the scaffold of a stanfit object. So we can
+# operate with the functions which use them. E.g.: loo::extract_log_lik().
+# Hint: If you use loo::extract_log_lik make sure your stan model includes
+# a 'vector[N] log_lik;'.
+
+# WAIC bundle
+#
+(WAIC <- loo::waic(LL))
+# Note use WAIC$estimates to get the sum()-mary of the $pointwise values. 
+# see: WAIC$estimates & WAIC$pointwise & apply(WAIC$pointwise, 2, sum)
+
+# Log pointwise predictive density (pointwise)
+#
+(lppd <-  WAIC$pointwise[,"elpd_waic"])
+# Note: sum(lppd) yield the WAIC$estimate for 'elpd_waic'
+# Note: -2*sum(lppd) yield the WAIC$estimate for 'waic'
+
+# Effective number of parameters (penalty term)
+#
+(p_waic <-  WAIC$pointwise[,"p_waic"])
+# Note: sum(p_waic) yields the WAIC$estimates "p_loo"
+
+# OOS predictive accuracy (pointwise)
+# ..corrected for the overfitting risk
+#
+-2*(lppd-p_waic)
+# Note: ..to compare a single value
+-2*(sum(lppd)-sum(p_waic))
+
+# Approximate WAIC standard error 
+#
+N <- dim(LL)[3]
+# The number of cases (the sample size) is the third dimension of the array.
+# Note: you can also use: n_cases <- nrow(d)
+WAIC_i <- -2*(lppd-p_waic)
+# Approximate standard error
+sqrt(N * var(WAIC_i))
+
+# Visualize!
+#
+
+# p_waic diagnostics
+plot(p_waic, pch=20) ; abline(h=0.5, lty=2)
+
+
+#
+# Handcrafted!
+#
+
 
 # Samples
 #
@@ -22,7 +99,7 @@ logprob <- vapply(seq(n_samples),
                     dnorm(d$M, mu, samples$sigma[s], log=TRUE)
                   }, FUN.VALUE=numeric(n_cases))
 
-# ..for efficiency 
+# ..for efficiency (see: rethinking package!) 
 #
 log_sum_exp <- function (x)  { 
   xmax <- max(x)
@@ -52,8 +129,6 @@ f <- function(i) log_sum_exp(log_L[,i]) - log(ns)
 (lppd <- vapply(1:n, f, FUN.VALUE=numeric(1)))
 sum(lppd)
 
-# ------------
-
 # Effective number of parameters
 #
 p_WAIC <- vapply(1:n_cases, 
@@ -73,56 +148,5 @@ n_cases <- nrow(d)
 waic_vec <- -2*(lppd - p_WAIC)
 sqrt(n_cases * var(waic_vec))
 
-# -----------------------------------------------------------------------------
-
-#
-# 3a. Create a "stanfit" 
-# Note: to extract_log_lik using loo elements must be names "log_lik"
-# stanfit <- rstan::read_stan_csv(fit$output_files())
-# LL <- loo::extract_log_lik(stanfit , merge_chains=FALSE )
-#
-
-# 3a. Create a "stanfit" 
-# Note: same effect as loo::extract_log_lik()
-# ..requires an array
-log_L <- fit$draws("logprob")
-waic_ls <- loo::waic(log_L)
-
-# WAIC estimates (summary)
-waic_ls$estimates
-# WAIC (pointwise)
-waic_ls$pointwise
-
-# LOOIC (pointwise)
-#
-(waic <- waic_ls$pointwise[,"waic"])
-# sum(looIC) yields: loo_ls$estimates "looic"
-
-# lppd (pointwise)
-(lppd <-  waic_ls$pointwise[,"elpd_waic"])
-# sum(waic) yields: waic_ls$estimates "waic"
-
-# Penalty term (effective number of parameters)
-(p_waic <-  waic_ls$pointwise[,"p_waic"])
-# sum(p_waic) yields: loo_ls$estimates "p_loo"
-
-# Visualize p_waic diagnostics
-plot(p_waic, pch=20) ; abline(h=0.5, lty=2)
-
-# TODO: Check correctness
-# OOS Deviance
-# ..accounted for overfitting risk
-#
--2*(sum(lppd) - sum(p_waic))
-
-# TODO: Check correctness
-# WAIC standard error
-#
-n_cases <- nrow(d)
-waic_vec <- -2*(lppd - p_waic)
-sqrt(n_cases * var(waic_vec))
-
-# -----------------------------------------------------------------------------
-
-# TODO: Big deviation between calculations! 
-
+# Note: Big deviation between calculations! 
+# TODO: Search for possible mistakes.
