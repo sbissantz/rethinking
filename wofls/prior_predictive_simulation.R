@@ -99,7 +99,7 @@ a <- rnorm(N, 160, 40)
 b <- rnorm(N, 0.001, 0.1)
 # Note: Argument to justify the PD: MAXENT!
 
-# value ranges
+# Value ranges
 # Robert Wadlow (272 cm)
 # Chandra Bahadur Dangi (54,6 cm)
 # Jon Brower Minnoch (635 kg)
@@ -110,7 +110,7 @@ smallest <- 54 ; lightest <- 2
 
 plot(NULL, xlim=range(0, 700), ylim=c(40, 300), 
      xlab="Weight (kg)", ylab="Height (cm)")
- High probability region
+# High probability region
 abline(h=c(smallest,largest), v=c(heaviest, lightest), lty=2)
 for(i in seq(50)) abline(a[i], b[i], col=scales::alpha("steelblue", .8))
 # curve() version
@@ -119,48 +119,64 @@ for(i in seq(50)) abline(a[i], b[i], col=scales::alpha("steelblue", .8))
         #add=TRUE, col=scales::alpha("black", .2)) 
 #}
 
-
-
 # TODO: Integrate sigma and plot raw data against prior predictions?
 # See: Search Stan manual for PPS
 
 #
 # Simulating posterior predictions
+# (aka. Prior Predictive Checks)
 #
+
+# standardized
 
 # In a nutshell
 #
-
 N <- 1e2
 a <- rnorm(N, 0, 0.2)
 b <- rnorm(N, 0, 0.5)
-x <- d$weight ; y <- d$height
+x <- seq(-3,3, length.out=N)
+mu <- a + b * x
+sigma <- rexp(N, 1)
+y_tilde <- rnorm(N, mu, sigma)
+plot(x, y_tilde, ylim=c(-3, 3), xlab="x", ylab="y_tilde", pch=20, 
+     col="steelblue")
+abline(a=0, b=1, lty=2)
 
-plot(NULL, xlim=c(-3,3), ylim=c(-3, 3), 
-     xlab="Weight (std)", ylab="Height (std)")
-abline(h=c(-2,2), lty=2)
-for(i in seq(50)) abline(a[i], b[i], col=scales::alpha("steelblue", .8))
-
-
-# Joint prior model
 #
-N <- 1e2
-# alpha prior
-a <- rnorm(N, 178, 20)
-# beta prior
-b <- rnorm(N, 0, 1)
-# value range
-x <- d2$weight ; y <- d2$height
-xbar <- mean(d2$weight) 
-plot(NULL, xlim=range(x), ylim=c(-100, 400),
-     xlab="Weight", ylab="Height")
-abline(h=c(0,272), lty = 2)
-for(i in 1:N) {
-  curve(a[i] + b[i]*(x-xbar), from=min(d2$weight)[1], to=max(d2$weight), 
-        add=TRUE, col=col.alpha("black", .2)) 
-}
+# Documented version
+#
 
-N <- 1e3
-b <- rnorm(N,0,.5)
-plot(c(-4,4), c(-4,4), type="n")
-for(i in seq(100)) abline(a=0, b[i])
+# Define the number of elements to simulate
+N <- 1e2
+
+# Note: Joint prior model
+
+# alpha prior
+a <- rnorm(N, 0, 0.2)
+
+# beta prior
+b <- rnorm(N, 0, 0.5)
+
+# Value range
+x <- seq(-3,3, length.out=N)
+
+# mu as a linear function of alpha and beta
+mu <- a + b * x
+
+# sigma prior 
+sigma <- rexp(N, 1)
+
+# Simulate values for y
+y_tilde <- rnorm(N, mu, sigma)
+# Note: This is how the robot sees the data before you feed it the ones!
+
+# Visualize
+plot(x, y_tilde, ylim=c(-3, 3), xlab="x", ylab="y_tilde", pch=20, 
+     col=scales::alpha("steelblue", .8))
+# Bisecting line
+abline(a=0, b=1, lty=2)
+
+
+
+
+
