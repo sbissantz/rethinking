@@ -2,11 +2,11 @@
 # Basis Splines 
 #
 
-# Note: This is really just an adapted snippet from Richard McElreaths Book. I
-# customized it so it could stick with cmdstanr (i.e., Stan). The tutorial
-# really got me into splines. But if you wanto to dive deeper into generalized
-# additive models (GAM), have a look at Simon N. Wood's "Generalized Additive
-# Models -- An Introduction with R."
+# Note: This is really just an adapted snippet from Richard McElreath's Book. I
+# customized it to use it with cmdstanr (i.e., Stan). The tutorial really got
+# me into splines. But if you wanto to dive deeper into generalized additive
+# models (GAM), have a look at Simon N. Wood's "Generalized Additive Models --
+# An Introduction with R."
 
 library(rethinking)
 data("cherry_blossoms")
@@ -64,7 +64,7 @@ rethinking::shade(mu_HPDI, dcc$year, col=scales::alpha("black", 0.5))
 N_knots <- 15
 # Note: determines the wigglyness of the spline
 
-# Evenly space quantile knots
+# Evenly space quantile values 
 probs <- seq(0,1, length.out=N_knots)
 knots <- quantile(dcc$year, probs)
 
@@ -123,9 +123,10 @@ bayesplot::mcmc_trace(samples)
 w <- fit$draws("w", format="matrix")
 w_means <- colMeans(w)
 
-# Linear predictor     mu <- a + B %*% w,
-# TODO: mu <- B %*% w_means ?
+# Linear predictor: mu = a + B %*% w,
 mu <- fit$draws("mu", format="matrix")
+# Note: I generated the linear predictor "mu" inside of Stan. You could also
+# use mu <- B %*% w_means to continue.
 
 # Visualize the linear predictor (B%*%w)
 # i.e: the basis function weighted by its parameter
@@ -136,14 +137,17 @@ for (i in 1:ncol(B)) lines(dcc$year, w_means[i]*B[,i], lwd=3, col="black")
 
 # Posterior line predictions
 # a + B %*% w,
+# Posterior mean 
 mu_mean <- apply(mu, 2, mean)
+# Highest posterior density interval 
 mu_HPDI <- apply(mu, 2, rethinking::HPDI)
 
-# Visualize the posterior line predictions fitted model
+# Visualize the posterior line predictions from the fitted model
 # I.e.: the sum of the weights basis functions
 # 
 plot(dcc$year, dcc$doy, xlab="year", ylab="Day in year",
       col=scales::alpha("steelblue", 0.3), pch=16 )
 lines(dcc$year, mu_mean, lwd=1.5)
 rethinking::shade(mu_HPDI, dcc$year, col=scales::alpha("black", 0.5))
+
 
