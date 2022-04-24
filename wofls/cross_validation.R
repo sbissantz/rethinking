@@ -1,7 +1,6 @@
 #
 # PSIS
 #
-rm(list=ls())
 
 # Goal: estimate the out-of-sample deviance of a model.
 #
