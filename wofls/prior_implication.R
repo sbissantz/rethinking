@@ -87,10 +87,17 @@ curve(dlnorm(x, 0, 1), from=0, to=10, xlab="weight", ylab="height")
 
 # Setup
 N <- 1e3 ; mu_log <- -1 ; sigma_log <- .6
+# Note: mu=f(sigma) ; chaning sigma alters mu -- vice versa!
+# mu = ln(mu^2/sqrt(mu^2 + sigma^2)) 
+# sigma = ln(1+sigma^2/mu^2)
 
 # Note: ln(X) ~ normal(mu, sigma). 
 # Here reversed: X ~ lognormal(mu_log, sigma_log)
-curve(dlnorm(x, mu_log, sigma_log), from=0, to=10, xlab="X", ylab="Y")
+polygon(
+        curve(dlnorm(x, mu_log, sigma_log), from=0, to=10, xlab="X", ylab="Y")
+        , col="steelblue"
+)
+#curve(dlnorm(x, mu_log, sigma_log), from=0, to=10, 
 # Probabilites
 p <- c(0.05, 0.5, 0.95)
 # Quantile values
@@ -105,38 +112,44 @@ alpha <- rlnorm(N, mu_log, sigma_log)
 # Are 5% of all cases above 1? 
 sum(alpha > 1)/N
 
-
-
-
-# Student t?
-
-
-
-# Plot the prior implications
-#
-
-
-
-
-# Additional: 95% interval 
-#
-
-curve(dlnorm(x, 0, 1), from=0, to=10, xlab="weight", ylab="height")
-# Quantile values for the 95% percentile interval
-qv <- qlnorm(c(.05, .50, .95), meanlog=0, sdlog=1)
-abline(v=qv, lty=2)
-
 # Sigma priors
 #
 
-# sigma prior
-curve(dexp(x, 1), from=-1, to=5)
-curve(dunif(x, 0, 50), from=-10, to=60)
+# Uniform
 
+# Note: Since Stan, for example, explicitally warns against uniform priors, and
+# I don't use them either, I decided to leave out uniform priors.
 
-curve(dlnorm(x, 0, 1), from=0, to=10, xlab="weight", ylab="height")
+# Exponential (standardized)
 
+# Setup
+N <- 1e3 ; lambda <- 1.5
+# Density function 
+curve(dexp(x, lambda), from=0, to=5, xlab="Sd (around the mean of Y)",
+      ylab="Y")
+# Probabilites 
+p <- c(0.05, 0.5, 0.95)
+# Quantile values
+qv <- qexp(p, lambda)
+# Add the quantile values to the plot
+abline(v=qv, lty=2)
 
+# Determine RNG state
+set.seed(123)
+# Random deviates 
+sigma <- rexp(N, lambda)
+# How much prob. mass is above 2 Sd?
+sum(sigma > 2)/N
+
+# Data distribution
+#
+
+# Student t
+
+# Note: If the pareto-k stats tells you there are highly infuential points, you
+# might change the expecation of your model. Do not simply drop outliers! They
+# are not impossible (i.e., dropping) they are just implausible -- given your 
+# model.
 
 
 
