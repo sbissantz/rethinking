@@ -1,16 +1,16 @@
 //
-// Posterior predictive simulation 
+// Posterior predictive simulation
 //
 data {
   int<lower=0> N;
   int<lower=0> K;
-  vector[N] D; 
+  vector[N] D;
   matrix[N,K] X;
 }
 parameters {
-  real alpha; 
+  real alpha;
   vector[K] beta;
-  real<lower=0> sigma; 
+  real<lower=0> sigma;
 }
 model {
   D ~ normal(X*beta + alpha, sigma);
