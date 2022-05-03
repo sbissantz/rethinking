@@ -123,12 +123,12 @@ sum(alpha > 1)/N
 # Exponential (standardized)
 
 # Setup
-N <- 1e3 ; lambda <- 1.5
+N <- 1e3 ; lambda <- 1
 # Density function 
 curve(dexp(x, lambda), from=0, to=5, xlab="Sd (around the mean of Y)",
       ylab="Y")
 # Probabilites 
-p <- c(0.05, 0.5, 0.95)
+p <- c(0.05, 0.5, 0.95, .99)
 # Quantile values
 qv <- qexp(p, lambda)
 # Add the quantile values to the plot
