@@ -61,7 +61,26 @@ rethinking::shade(mu_HPDI, M_seq)
 # High Posterior Density Intervals
 # Model expects to find 89% of actual hights within...
 rethinking::shade(B_HPDI, M_seq)
+shade(B_HPDI, M_seq)
 
 stanfit <- rstan::read_stan_csv(fit$output_files())
 rstan::traceplot(stanfit)
+
+from <- M_seq[1]
+to <- M_seq[2]
+y <- c(B_HPDI[1, ], B_HPDI[2, ][ncol(B_HPDI):1])
+x <- c(M_seq, M_seq[length(M_seq):1])
+polygon(x, y) 
+polygon(c(x, to, from), c(y, 0, 0))
+
+
+
+
+
+
+
+
+
+
+
 
