@@ -22,8 +22,8 @@ model{
     alpha ~ normal(1, 0.1);
     beta_r ~ normal(0,0.25);
     sigma ~ exponential(2);
-    for(i in 1:N) {
-        mu[i] = alpha[cid[i]] + beta_r * (rugged_norm[i] - rugged_bar)
+    for(n in 1:N) {
+        mu[n] = alpha[cid[n]] + beta_r * (rugged_norm[n] - rugged_bar);
     }
     log_gdp_std ~ normal(mu, sigma);
 }
