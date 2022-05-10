@@ -78,7 +78,8 @@ fit$print()
 #    beta_r   0.02   0.02 0.06 0.06  -0.08   0.10 1.00     1881     2119
 #    sigma    0.14   0.14 0.01 0.01   0.13   0.15 1.00     2391     2228
 samples <- fit$draws(format="data.frame")
-bayesplot::mcmc_trace(samples)
+LL_1 <- fit$draws("logprob")
+#bayesplot::mcmc_trace(samples)
 
 # Indicator variable
 #
@@ -110,12 +111,13 @@ fit <- mdl$sample(data=stan_ls)
 #
 fit$cmdstan_diagnose()
 fit$print()
-bayesplot::mcmc_trace(samples)
 
 
 # Samples
 #
 samples <- fit$draws(format="matrix")
+LL_2 <- fit$draws("logprob")
+# bayesplot::mcmc_trace(samples)
 
 # Posterior correlations
 #
@@ -181,6 +183,124 @@ lines(rugged_seq, mu_africa_mean, lwd=6)
 for(i in seq(N)) lines(rugged_seq, mu_noafrica[i,], col=scales::alpha("steelblue", .4))
 lines(rugged_seq, mu_noafrica_mean, lwd=6, col="steelblue")
 legend("topright", legend=c("Not Africa", "Africa"), fill=c("steelblue", "black"))
+
+# Model
+#
+# log_gdp_std ~ normal(mu, sigma)
+# mu = alpha_cid[i] + beta_r_cid[i] * (rugged_norm - mean(rugged_norm))
+# alpha_cid[i] ~ normal(1,0.1)
+# beta_r_cid[i] ~ normal(0,0.25)
+# sigma ~ exponential(2)
+
+# Reduction
+#
+# stan_ls is the same as before!
+
+# Fit
+#
+file <-  file.path("..", "stan", "8", "3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) ; mdl$print()
+fit <- mdl$sample(data=stan_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+
+# Samples
+#
+samples <- fit$draws(format="matrix")
+LL_3 <- fit$draws("logprob")
+# bayesplot::mcmc_trace(samples)
+
+# Posterior correlations
+#
+vars <- c("alpha[1]", "alpha[2]", "beta_r[1]", "beta_r[2]")
+round( cor(samples[,vars]), digits=2 )
+
+# P-mean & HPDI's
+# 
+
+# Value sequence
+rugged_seq <- seq(-0.1, 1.1, length.out=nrow(samples))
+
+# Function for the posterior line
+calc_mu <- function(rugged, cid) {
+    a <- paste0("alpha[", cid, "]") 
+    b <- paste0("beta_r[", cid, "]") 
+    samples[, a] + samples[, b] * rugged
+}
+# Mu within africa
+mu_africa <- sapply(rugged_seq, calc_mu, cid=1)
+# Mu outside of africa
+mu_noafrica <- sapply(rugged_seq, calc_mu, cid=2)
+
+# Poterior line within africa 
+mu_africa_mean <- colMeans(mu_africa)
+# Poterior line outside of africa 
+mu_noafrica_mean <- colMeans(mu_noafrica)
+
+# HPDI within affrica
+mu_africa_HPDI <- apply(mu_africa, 2, rethinking::HPDI)
+# HPDI outside of affrica
+mu_noafrica_HPDI <- apply(mu_noafrica, 2, rethinking::HPDI)
+
+# Visualize
+#
+
+# Reversed ruggedness sequence
+rugged_seq_rev <- rugged_seq[seq(length(rugged_seq),1)]
+plot(dcc$rugged_norm, dcc$log_gdp_std, xlab="ruggedness (normalized)",
+ylab="log GDP (standardized)", pch=20, col=ifelse(dcc$cid==2, "steelblue", "black"))
+# ...for the polygon
+y <- c(mu_africa_HPDI[1, ], mu_africa_HPDI[2, ][seq(ncol(mu_africa_HPDI),1)])
+x <- c(rugged_seq, rugged_seq_rev)
+polygon(x, y, col="lightgrey", border="lightgrey") 
+# Posterior mean line within africa
+lines(rugged_seq, mu_africa_mean, lwd=3, col="black")
+# ...for the polygon
+y <- c(mu_noafrica_HPDI[1, ], mu_noafrica_HPDI[2, ][seq(ncol(mu_noafrica_HPDI),1)])
+x <- c(rugged_seq, rugged_seq_rev)
+polygon(x, y, col="lightblue", border = "lightblue") 
+# Posterior mean line outside of africa
+lines(rugged_seq, mu_noafrica_mean, lwd=3, col="steelblue")
+# Legend to clarify the colors
+legend("topright", legend=c("Not Africa", "Africa"), fill=c("steelblue", "black"))
+
+# Visualize II
+#
+N <- 100
+plot(dcc$rugged_norm, dcc$log_gdp_std, xlab="ruggedness (normalized)",
+ylab="log GDP (standardized)", pch=20, col=ifelse(dcc$cid==2, "steelblue", "black"))
+# Posterior mean line within africa
+for(i in seq(N)) lines(rugged_seq, mu_africa[i,], col=scales::alpha("black", .4))
+lines(rugged_seq, mu_africa_mean, lwd=6)
+for(i in seq(N)) lines(rugged_seq, mu_noafrica[i,], col=scales::alpha("steelblue", .4))
+lines(rugged_seq, mu_noafrica_mean, lwd=6, col="steelblue")
+legend("topright", legend=c("Not Africa", "Africa"), fill=c("steelblue", "black"))
+
+# Model comparison 
+#
+rel_eff <- loo::relative_eff(exp(LL_1))
+PSIS_1 <- loo::loo(LL_1, r_eff = rel_eff, is_method="psis")
+
+rel_eff <- loo::relative_eff(exp(LL_2))
+PSIS_2 <- loo::loo(LL_2, r_eff = rel_eff, is_method="psis")
+
+rel_eff <- loo::relative_eff(exp(LL_3))
+PSIS_3 <- loo::loo(LL_3, r_eff = rel_eff, is_method="psis")
+
+comp <- loo::loo_compare(PSIS_1, PSIS_2, PSIS_3)
+print(comp, simplify=FALSE)
+
+# Influential obs 
+# ..conditional on the model
+#
+pareto_k <- PSIS$pointwise[,"influence_pareto_k"]
+plot(pareto_k, pch=20) ; abline(h=0.5, lty=2)
+# Note: influential obs, should adapt model expectations!
+
 
 
 
