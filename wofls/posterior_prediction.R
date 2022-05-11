@@ -55,6 +55,16 @@ legend("bottomright", legend=c("mu HPDI", "B_tilde HPDI"),
 # Alternatives! See at the end the spaghetti plotting style the HPDI straight
 # line plotting style!
 
+################################################################################
+# IMPORT
+# ..if you have (categorical) IAs use ... to calc mu!
+calc_mu <- function(rugged, cid) {
+    a <- paste0("alpha[", cid, "]") 
+    b <- paste0("beta_r[", cid, "]") 
+    samples[, a] + samples[, b] * rugged
+}
+################################################################################
+
 #
 # Documented version
 #
