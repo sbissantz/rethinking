@@ -246,6 +246,8 @@ mu_africa_HPDI <- apply(mu_africa, 2, rethinking::HPDI)
 # HPDI outside of affrica
 mu_noafrica_HPDI <- apply(mu_noafrica, 2, rethinking::HPDI)
 
+mu_noafrica_HPDI <- apply(mu_noafrica, 2, rethinking::HPDI)
+
 # Visualize
 #
 
@@ -297,9 +299,35 @@ print(comp, simplify=FALSE)
 # Influential obs 
 # ..conditional on the model
 #
-pareto_k <- PSIS$pointwise[,"influence_pareto_k"]
+pareto_k <- PSIS_3$pointwise[,"influence_pareto_k"]
 plot(pareto_k, pch=20) ; abline(h=0.5, lty=2)
 # Note: influential obs, should adapt model expectations!
+
+# Expected Difference in log-GDP
+#
+delta <- mu_africa - mu_noafrica 
+delta_mean <- colMeans(delta)
+delta_HPDI <- apply(delta,2, rethinking::HPDI)
+
+# Visualize
+#
+rugged_seq_rev <- rugged_seq[seq(length(rugged_seq),1)]
+plot(NULL, xlim=range(rugged_seq), ylim=range(delta_HPDI), 
+xlab="Ruggedness (norm)", ylab="Expected difference in log GDP (std)")
+y <- c(delta_HPDI[1, ], delta_HPDI[2, ][seq(ncol(delta_HPDI),1)])
+x <- c(rugged_seq, rugged_seq_rev)
+polygon(x, y, col="lightblue", border = "lightblue") 
+lines(rugged_seq, delta_mean, lwd=2, col="steelblue")
+text(x=0.1, y=c(0.02, -0.02), labels = c("Africa higher GDP", "Africa lower GDP"))
+abline(h=0, lty=2)
+mtext("89% HPDI")
+
+#
+# Continous interatctions
+#
+
+
+
 
 
 
