@@ -325,7 +325,69 @@ mtext("89% HPDI")
 #
 # Continous interatctions
 #
+data(tulips)
+d <- tulips
 
+# Transform the data
+#
+# anyNA(d)
+# [1] FALSE
+# 
+# Center water
+d$W <- with(d, water - mean(water))
+# Center shade 
+d$S <- with(d, shade - mean(shade))
+# Normalize blooms. 0: meaningful
+d$B <- with(d, blooms/max(blooms))
+
+# Model sketch
+#
+# B ~ normal(mu, sigma)
+# mu_i = alpha + gamma_W,i * W_i + beta_S * S_i
+# gamma_W,i = beta_W + beta_WS * S_i
+# alpha ~ alpha(0.5, 0.25)
+# beta_W ~ normal(0, 0.25)
+# beta_S ~ normal(0, 0.25)
+# beta_WS ~ normal(0, 0.25)
+
+# PPS
+#
+simulate_prior <- function(S) {
+    N <- 1e3
+    W <- seq(-1, 1, length.out=N)
+    alpha <- rnorm(N, 0.5, 0.25)
+    beta_S <- rnorm(N, 0, 0.25) 
+    beta_W <- rnorm(N, 0,0.25)
+    beta_WS <- rnorm(N, 0, 0.25)
+    gamma_Wi <- beta_W * W + beta_WS * S
+    calc_mu <- function(W, S) {
+        alpha + gamma_Wi * W + beta_S * S
+    }
+    (mu <- sapply(W, calc_mu, S=S)) 
+}
+S <- -1:1
+mu_ls <- lapply(S, simulate_prior)
+
+# Prior visualization 
+# (tryptic) 
+#
+par(mfrow=c(1,3))
+plot_prior <- function(S){
+    plot(NULL, xlim=c(-1,1), ylim=c(-1.5,1.5), 
+         pch=20, type="n", xlab="Water", ylab="Bloom")
+    abline(h=c(0,1), lty=2)
+    for(i in 1:100) {
+        lines(W, mu_ls[[S+2]][i,], col=scales::alpha("steelblue", .3)) 
+    }
+    mtext(paste0("shade = ", S))
+}
+lapply(S, plot_prior)
+
+# Note: omit to visualize the influence of sigma
+#
+
+# TODO: Posterior predictions
+#
 
 
 
