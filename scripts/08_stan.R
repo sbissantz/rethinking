@@ -352,9 +352,9 @@ d$B <- with(d, blooms/max(blooms))
 
 # PPS
 #
+N <- 1e3
+W <- seq(-1, 1, length.out=N)
 simulate_prior <- function(S) {
-    N <- 1e3
-    W <- seq(-1, 1, length.out=N)
     alpha <- rnorm(N, 0.5, 0.25)
     beta_S <- rnorm(N, 0, 0.25) 
     beta_W <- rnorm(N, 0,0.25)
@@ -371,7 +371,7 @@ mu_ls <- lapply(S, simulate_prior)
 # Prior visualization 
 # (tryptic) 
 #
-par(mfrow=c(1,3))
+par(mfrow=c(3,1))
 plot_prior <- function(S){
     plot(NULL, xlim=c(-1,1), ylim=c(-1.5,1.5), 
          pch=20, type="n", xlab="Water", ylab="Bloom")
@@ -388,6 +388,27 @@ lapply(S, plot_prior)
 
 # TODO: Posterior predictions
 #
+
+# Reduction
+#
+dat_ls <- list(N = nrow(d), B=d$B, W=d$W, S=d$S)
+
+# Fit
+#
+file <- "../stan/8/5.stan"
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+samples <- fit$draws(format="data.frame")
+
+
 
 
 
