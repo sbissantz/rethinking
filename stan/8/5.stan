@@ -12,7 +12,7 @@ parameters {
   real<lower=0> sigma;
 }
 transformed parameters {
-  vector[N] mu;
+  vector[N] mu; 
   // pointwise multiplication in STAN ./
   // see: https://vasishth.github.io/bayescogsci/book/regression-models-in-stan.html
   // Note: there is also a more efficient implementation. See: url above.
@@ -26,3 +26,10 @@ model{
   beta_WS ~ normal(0.0, 0.25);
   sigma ~ exponential(1);
 }
+generated quantities {
+  real B_tilde[N] = 
+    normal_rng(mu, sigma); 
+}
+
+
+
