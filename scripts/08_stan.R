@@ -408,10 +408,49 @@ fit$print()
 #
 samples <- fit$draws(format="data.frame")
 
+# Posterior correlation
+#
+vars <- c("alpha", "beta_W", "beta_S", "beta_WS", "sigma")
+round(cor(samples[,vars]), digits=2)
+
+N <- nrow(samples)
+S <- W <- seq(-1, 1, length.out=N)
+calc_mu <- function(W,S) {
+    with(samples,alpha + beta_W*W + beta_S*S + beta_WS*W*S)
+}
+mu_1 <- sapply(W, calc_mu, S=-1)
+mu_2 <- sapply(W, calc_mu, S=0)
+mu_3 <- sapply(W, calc_mu, S=1)
+
+par(mfrow=c(3,1))
+plot(B ~ W, d[d$S==-1,], xlim=c(-1,1), ylim=c(0,1), pch=20, xlab="Water",
+     ylab="Bloom", col="steelblue") 
+for(i in 1:100) { 
+    lines(W, mu_1[i,], col=scales::alpha("black", .3)) 
+}
+mtext("S=-1")
+plot(B ~ W, d[d$S==0,], xlim=c(-1,1), ylim=c(0,1), pch=20, xlab="Water",
+     ylab="Bloom", col="steelblue") 
+for(i in 1:100) { 
+    lines(W, mu_2[i,], col=scales::alpha("black", .3)) 
+}
+mtext("S=0")
+plot(B ~ W, d[d$S==1,], xlim=c(-1,1), ylim=c(0,1), pch=20, xlab="Water",
+     ylab="Bloom", col="steelblue") 
+for(i in 1:100) { 
+    lines(W, mu_3[i,], col=scales::alpha("black", .3)) 
+}
+mtext("S=1")
 
 
-
-
+#
+# TODO: Add to proposal. There is a good book (vasishth.github.io "Bayesian
+# Data Analysis for Cognitive Science") with a box in chapter 4.1 which
+# contains theoretical knowledge and a how to on building truncated
+# distributions (in general). Use it to build the truncated distribution in
+# your paper. Use the theory behind to understand how to set the parameters in
+# truncated distributions.
+#
 
 
 
