@@ -442,17 +442,3 @@ for(i in 1:100) {
 }
 mtext("S=1")
 
-
-#
-# TODO: Add to proposal. There is a good book (vasishth.github.io "Bayesian
-# Data Analysis for Cognitive Science") with a box in chapter 4.1 which
-# contains theoretical knowledge and a how to on building truncated
-# distributions (in general). Use it to build the truncated distribution in
-# your paper. Use the theory behind to understand how to set the parameters in
-# truncated distributions.
-#
-
-
-
-
-
