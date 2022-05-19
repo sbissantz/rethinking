@@ -1205,6 +1205,25 @@ mu_lz <- fit$draws("mu_lz", format="matrix")
 mu_ez <- fit$draws("mu_ez", format="matrix")
 mu_gz <- fit$draws("mu_gz", format="matrix")
 
+# versus
+#
+
+file <- file.path(getwd(), "stan", "exercises", "pps_8M4.stan")
+N <- 1e3
+W <- sample(-1:1, N, replace=TRUE)
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(fixed_param=TRUE)
+fit$cmdstan_diagnose()
+
+samples <- fit$draws(format="data.frame")
+calc_mu <- function(W, S) {
+    with(samples, alpha + beta_W*W + beta_S*S + beta_WS*W*S)
+}
+mu_gz <- sapply(W, calc_mu, S=1)
+mu_ez <- sapply(W, calc_mu, S=0)
+mu_lz <- sapply(W, calc_mu, S=-1)
+
+
 par(mfrow=c(3,1))
 plot(NULL, xlim=c(-1,1), ylim=c(-1,2), xlab="water", ylab="bloom")
 for( i in 1:100 ) {
@@ -1225,24 +1244,45 @@ for( i in 1:100 ) {
     lines(W, mu_gz[100,], col=scales::alpha("black", .8))
 mtext("shade=1")
 
-# versus
+# Load data
 #
+data(tulips)
+d <- tulips
 
-file <- file.path(getwd(), "stan", "exercises", "pps_8M4.stan")
-N <- 1e3
-W <- sample(-1:1, N, replace=TRUE)
+# Transform data
+#
+d$S <- with(d, d$shade - mean(d$shade))
+d$W <- with(d, d$water - mean(d$water))
+d$B <- with(d, blooms/max(blooms))
+d$BID <- as.integer(d$bed)
+
+# Reduce data
+#
+dat_ls <- list(N=nrow(d), L=nlevels(d$bed), B=d$B, W=d$W, S=d$S, BID=d$BID)
+file <- file.path(getwd(), "stan", "exercises", "mdl_8M4.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(fixed_param=TRUE)
-fit$cmdstan_diagnose()
+fit <- mdl$sample(data=dat_ls)
 
-samples <- fit$draws(format="data.frame")
-calc_mu <- function(W, S) {
-    with(samples, alpha + beta_W * W + beta_S * S)
-}
-mu_gz <- sapply(W, calc_mu, S=1)
-mu_ez <- sapply(W, calc_mu, S=0)
-mu_lz <- sapply(W, calc_mu, S=-1)
+# 8M5 ---------------------------------------------------------------------
 
+# Load data
+#
+data(tulips)
+d <- tulips
+
+# Transform data
+#
+d$S <- with(d, d$shade - mean(d$shade))
+d$W <- with(d, d$water - mean(d$water))
+d$B <- with(d, blooms/max(blooms))
+d$BID <- as.integer(d$bed)
+
+# Reduce data
+#
+dat_ls <- list(N=nrow(d), L=nlevels(d$bed), B=d$B, W=d$W, S=d$S, BID=d$BID)
+file <- file.path(getwd(), "stan", "exercises", "mdl_8M5.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
 
 
 
