@@ -1175,12 +1175,73 @@ sum(values$pointwise[,"p_loo"])
 # all parameter values tends to be equal to the number of free parameters in
 # the model -- for flat priors (AIC)! 
 
+# 8M4 ---------------------------------------------------------------------
 
+setwd("~/projects/stanmisc") 
 
+# Model sketch
+#
+# B ~ normal(mu, sigma)
+# mu_i = alpha + gamma_W,i*W_i + beta_S*S
+# gamma_W,i = beta_W + beta_WS * S
+# alpha ~ normal(0.5, 0.25)
+# beta_W ~ normal(0, 0.25)
+# beta_S ~ normal(0,0.25) 
+# beta_WS ~ normal(0, 0.25)
 
+# PPS
+#
+file <- file.path(getwd(), "stan", "exercises", "pps_8M4.stan")
+N <- 1e3
+W <- sample(-1:1, N, replace=TRUE)
+dat_ls <- list(N=1e3, S_lz=rep(-1, N), S_ez=rep(0,N), S_gz=rep(1,N), W=W)
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls, fixed_param=TRUE)
 
+fit$cmdstan_diagnose()
 
+samples <- fit$draws(format="data.frame")
+mu_lz <- fit$draws("mu_lz", format="matrix")
+mu_ez <- fit$draws("mu_ez", format="matrix")
+mu_gz <- fit$draws("mu_gz", format="matrix")
 
+par(mfrow=c(3,1))
+plot(NULL, xlim=c(-1,1), ylim=c(-1,2), xlab="water", ylab="bloom")
+for( i in 1:100 ) {
+    lines(W, mu_lz[i,], col=scales::alpha("steelblue", .5))
+}
+    lines(W, mu_lz[100,], col=scales::alpha("black", .8))
+mtext("shade=-1")
+plot(NULL, xlim=c(-1,1), ylim=c(-1,2), xlab="water", ylab="bloom")
+for( i in 1:100 ) {
+    lines(W, mu_ez[i,], col=scales::alpha("steelblue", .5))
+}
+    lines(W, mu_ez[100,], col=scales::alpha("black", .8))
+mtext("shade=0")
+plot(NULL, xlim=c(-1,1), ylim=c(-1,2), xlab="water", ylab="bloom")
+for( i in 1:100 ) {
+    lines(W, mu_gz[i,], col=scales::alpha("steelblue", .5))
+}
+    lines(W, mu_gz[100,], col=scales::alpha("black", .8))
+mtext("shade=1")
+
+# versus
+#
+
+file <- file.path(getwd(), "stan", "exercises", "pps_8M4.stan")
+N <- 1e3
+W <- sample(-1:1, N, replace=TRUE)
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(fixed_param=TRUE)
+fit$cmdstan_diagnose()
+
+samples <- fit$draws(format="data.frame")
+calc_mu <- function(W, S) {
+    with(samples, alpha + beta_W * W + beta_S * S)
+}
+mu_gz <- sapply(W, calc_mu, S=1)
+mu_ez <- sapply(W, calc_mu, S=0)
+mu_lz <- sapply(W, calc_mu, S=-1)
 
 
 
