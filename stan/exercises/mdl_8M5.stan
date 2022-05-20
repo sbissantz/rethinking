@@ -13,18 +13,19 @@ parameters {
   real beta_WS;
   real<lower=0> sigma;
 }
-model {
+transformed parameters { 
   vector[N] mu;
+  for(i in 1:N) {
+    mu[i] = alpha[BID[i]] + beta_W*W[i] + beta_S*S[i] + beta_WS*(W[i].*S[i]);
+  }
+}
+model {
+  B ~ normal(mu, sigma);
   alpha ~ normal(0.5, 0.25);
   // half-normal
   beta_W ~ normal(0, 0.25);
   // half-normal
   beta_S ~ normal(0, 0.25);
-  beta_WS ~ normal(0, 0.25);
+  beta_WS ~ normal(0, 0.25);;
   sigma ~ exponential(1);
-    for(i in 1:N) {
-      mu[i] = alpha[BID[i]];
-      //mu[i] = alpha[BID[i]] + beta_W*W + beta_S*S + beta_WS*(W.*S);
-    }
-  B ~ normal(mu, sigma);
 }
