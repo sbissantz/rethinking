@@ -1270,6 +1270,7 @@ fit <- mdl$sample(data=dat_ls)
 data(tulips)
 d <- tulips
 
+
 # Transform data
 #
 d$S <- with(d, d$shade - mean(d$shade))
@@ -1284,5 +1285,32 @@ file <- file.path(getwd(), "stan", "exercises", "mdl_8M5.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(data=dat_ls)
 
+# Diagnostics
+#
+fit$print()
+fit$cmdstan_diagnose()
 
+# Samples
+#
+samples <- fit$draws(format="matrix")
+
+calc_mu <- function(W,S, BID) {
+    alpha <- paste0("alpha[",BID,"]")
+    samples[,alpha] + samples[,"beta_W"]*W + samples[,"beta_S"] +
+        samples[,"beta_WS"]*W*S
+}
+
+par(mfrow=c(3,3))
+for(s in -1:1) {
+    for(b in 1:3) {
+        plot_cond <- d$S==s & d$BID==b
+        plot(B ~ W, data=d[plot_cond,], pch=20, xlim=c(-1,1), ylim=c(0,1),
+        xlab="Water", ylab="Bloom")
+        mtext(paste0("Shade= ", s, "& BID=", b))
+        mu <- sapply(d$W, calc_mu, S=s, BID=b)
+        for( i in 1:50 ) {
+            lines(d$W, mu[i,], col=scales::alpha("black", .3))
+        }
+    }
+}
 
