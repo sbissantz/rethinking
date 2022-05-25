@@ -46,15 +46,13 @@ fit <- mdl$sample(dat=dat_ls)
 #
 fit$cmdstan_diagnose()
 fit$print()
-
+stanfit <- rstan::read_stan_csv(fit$output_files())
+rethinking::trankplot(stanfit)
 
 # Samples
 #
 samples <- fit$draws(format="data.frame")
-
-stanfit <- rstan::read_stan_csv(fit$output_files())
 log_lik <- fit$draws("logprob")
-
 
 # Calculate & Simulate
 #

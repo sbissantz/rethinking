@@ -77,6 +77,9 @@ fit$print()
 #    alpha    1.21   1.21 0.02 0.02   1.18   1.23 1.00     1933     2020
 #    beta_r   0.02   0.02 0.06 0.06  -0.08   0.10 1.00     1881     2119
 #    sigma    0.14   0.14 0.01 0.01   0.13   0.15 1.00     2391     2228
+samples <- fit$draws()
+bayesplot::mcmc_trace_data(samples)
+
 samples <- fit$draws(format="data.frame")
 LL_1 <- fit$draws("logprob")
 #bayesplot::mcmc_trace(samples)
