@@ -1314,3 +1314,62 @@ for(s in -1:1) {
     }
 }
 
+# 9M1 ---------------------------------------------------------------------
+
+library(rethinking)
+data(rugged)
+d <- rugged
+
+# Tranformations 
+#
+d$log_gdp <- log(d$rgdppc_2000)
+cond <- complete.cases(d$rgdppc_2000) 
+dcc <- d[cond,]
+dcc$cid <- with(dcc, ifelse(cont_africa==1, 1, 2))
+
+# Rescaling
+# 
+# Mean scaler 
+dcc$log_gdp_std <- with(dcc, log_gdp/mean(log_gdp))
+# Maximum scaler 
+dcc$rugged_norm <- with(dcc, rugged/max(rugged)) 
+
+stan_ls <- list(N=nrow(dcc), L=length(unique(dcc$cid)), cid=dcc$cid,
+                rugged_norm=dcc$rugged_norm, log_gdp_std=dcc$log_gdp_std)
+
+file <-  file.path("..", "stan", "exercises", "mdl_9M1.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) ; mdl$print()
+fit <- mdl$sample(data=stan_ls, seed=123)
+# beta ~ normal(0.25)
+#  beta_r[1]   0.13   0.13 0.08 0.08   0.00   0.25 1.00     4249     2895
+#  beta_r[2]  -0.14  -0.14 0.05 0.05  -0.23  -0.05 1.00     4297     2810
+# beta ~ exponential(0.3)
+#  beta_r[1]   0.13   0.13 0.08 0.08   0.00   0.25 1.00     4249     2895
+#  beta_r[2]  -0.14  -0.14 0.05 0.05  -0.23  -0.05 1.00     4297     2810
+# sigma ~ exponential(0.3)
+# sigma       0.11   0.11 0.01 0.01   0.10   0.12 1.00     4310     2868
+# sigma ~ uniform(0,1)
+# sigma       0.11   0.11 0.01 0.01   0.10   0.12 1.00     4874     3063
+
+# 9M3 ---------------------------------------------------------------------
+
+# Simulate data
+N <- 1e3
+x <- rnorm(N)
+y <- rnorm(N, x)
+d <- data.frame(x,y)
+stan_ls <- list(N=nrow(d), x=x, y=y)
+
+?sample
+
+file <-  file.path("..", "stan", "exercises", "mdl_9M3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) ; mdl$print()
+
+for(s in seq(1,100, 10)) {
+message(s) ; Sys.sleep(3)
+fit <- mdl$sample(data=stan_ls, seed=123, iter_warmup=s, 
+                  iter_sampling=2000)
+Sys.sleep(3)
+}
+# Between 1 and 10 is enough for that simple model
+
