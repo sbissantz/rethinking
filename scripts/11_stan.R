@@ -16,14 +16,17 @@ d$treatment <- 1 + d$prosoc_left + 2*d$condition
 # alpha_j ~ ?
 # beta_k ~ ?
 
+# TODO: Delete and restart from Gabrys example
+#
+
 # Prior predictive simulaion
 #
 path <- "~/projects/stanmisc/stan/10/"
 file <- file.path(path, "pps_1.stan")
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-N <- 1e3
-x <- seq(0, 100)
-data_ls <- list(N=1e3, x=x)
+N <- length(x)
+x <- d$treatment 
+data_ls <- list(N=N, x=x)
 pps <- mdl$sample(data=data_ls, fixed_param=TRUE)
+samples <- pps$draws(format="df")
 
 
