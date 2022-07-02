@@ -29,7 +29,7 @@ plot(density(alpha_prob), xlim=c(0,1))
 
 # Prior predictive simulaion (Stan)
 #
-path <- "~/projects/stanmisc/stan/10/"
+path <- "~/projects/stanmisc/stan/11/"
 file <- file.path(path, "pps_1.stan")
 N <- length(x)
 x <- d$treatment 
