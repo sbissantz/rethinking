@@ -19,6 +19,8 @@ of your statistical problems, Stan keeps you on track. Lastly, I put my hands
 on Gelman et al.'s 2013 masterpiece *Bayesian Data Analysis*[^5]. I hope
 they'll release a new version of the book before I need to buy it.
 
+## #TowardsAPrincipledBayesianWorkflow
+
 ---
 
 ## Collection of awesome websites
@@ -29,6 +31,7 @@ they'll release a new version of the book before I need to buy it.
 - https://statmodeling.stat.columbia.edu/
 - https://avehtari.github.io/modelselection/
 - https://elevanth.org/blog/
+– https://vasishth.github.io/bayescogsci/book/
 
 ---
 
