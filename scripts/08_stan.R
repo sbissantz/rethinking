@@ -124,8 +124,8 @@ LL_2 <- fit$draws("logprob")
 
 # Posterior correlations
 #
-vars <- c("alpha[1]", "alpha[2]", "beta_r")
-round( cor(samples[,vars]), digits=2 )
+vars <- c("alpha[1]", "alpha[2]", "beta_r", "sigma")
+(V <- round( cor(samples[,vars]), digits=2 ))
 
 # P-mean & HPDI's
 # 
