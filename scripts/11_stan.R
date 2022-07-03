@@ -55,10 +55,11 @@ alpha_p <- inv_logit(alpha_lo)
 beta_p <- inv_logit(beta_lo)
 
 x <- rnorm(4e3, 0,10)
-plot(inv_logit(alpha_lo + beta_lo * x))
+plot(density(inv_logit(alpha_lo + beta_lo * x)))
 
 # TODO: Produce these S-curves!
 #
+
 
 
 
