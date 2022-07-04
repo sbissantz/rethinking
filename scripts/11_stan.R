@@ -52,13 +52,47 @@ beta_p <- plogis(beta_lo)       # NEAT!
 # General version
 inv_logit <- function(x) exp(x) / (1 + exp(x))
 alpha_p <- inv_logit(alpha_lo)
+plot(density(alpha_p))
 beta_p <- inv_logit(beta_lo)
-
-x <- rnorm(4e3, 0,10)
-plot(density(inv_logit(alpha_lo + beta_lo * x)))
-
-# TODO: Produce these S-curves!
+plot(density(beta_p))
+# Samples
 #
+
+# PPS
+#
+N <- 1e3
+alpha_lo <- rnorm(N, 0,1.5)
+beta_lo <- rnorm(N, 0,0.5)
+
+# logit(pi) = X_i*beta + alpha
+# pi = logit^-1(X_i*beta + alpha)
+inv_logit <- function(x) exp(x) / (1 + exp(x))
+alpha_p <- inv_logit(alpha_lo)
+plot(density(alpha_p))
+
+beta_p <- inv_logit(alpha_lo)
+plot(density(beta_p))
+
+# Visualize
+plot(c(-4,4), c(0,1), type="n", ylab="Pr(pull_left)",
+     xlab="Predictor values", main="Prior predictive simulation")
+for(i in 1:50) {
+    curve(inv_logit(alpha_lo[i] + beta_lo[i] * x), from=-4, to=4, add=TRUE)
+}
+
+#
+# Code a Stan version. Switching to Stan is necessary, because it allows to
+# constraint the p's more easily. E.g. a lower bound for the predictor.
+#
+
+
+
+
+
+
+
+
+
 
 
 
