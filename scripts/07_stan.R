@@ -37,7 +37,7 @@ dat_ls <- list(N=nrow(d), B=d$B, M=d$M)
 # Fit the model
 #
 
-path <- "/home/steven/projects/stanmisc"
+path <- "~/projects/stanmisc"
 file <- file.path(path, "stan", "7", "1.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(dat=dat_ls)
