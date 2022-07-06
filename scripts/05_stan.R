@@ -493,7 +493,8 @@ dat_ls <- list(N=nrow(d), K=2, D=as.numeric(d$D), X=cbind(as.numeric(d$A),
 
 # Model fitting
 #
-file <- file.path( getwd(), "stan", "mdl_53_pp.stan")
+path <- "~/projects/stanmis"
+file <- file.path( , "stan", "53_pp.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample( data = dat_ls )
 
