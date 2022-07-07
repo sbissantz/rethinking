@@ -24,16 +24,16 @@ N <- 1e3
 
 alpha_lo <- rnorm(N, 0, 1.5)
 alpha_p <- plogis(alpha_lo) 
-plot(density(alpha_prob), xlim=c(0,1))
+plot(density(alpha_p), xlim=c(0,1))
 
 beta_lo <- rnorm(N, 0,0.5)
 beta_p <- plogis(beta_lo) 
 plot(density(beta_p), xlim=c(0,1))
 
 # Alternative
-inv_logit <- function(x) exp(x) / (1 + exp(x))
-alpha_p <- inv_logit(alpha_lo)
-beta_p <- inv_logit(beta_lo) 
+sigmoid <- function(x) 1 / (1 + exp(-x))
+alpha_p <- sigmoid(alpha_lo)
+beta_p <- sigmoid(beta_lo) 
 
 # Visualize
 # logit(pi) = X_i*beta + alpha
@@ -41,10 +41,9 @@ beta_p <- inv_logit(beta_lo)
 plot(c(-4,4), c(0,1), type="n", ylab="Pr(pull_left)",
      xlab="Predictor values", main="Prior predictive simulation")
 for(i in 1:50) {
-    curve(inv_logit(alpha_lo[i] + beta_lo[i] * x), from=-4, to=4, add=TRUE)
+    curve(sigmoid(alpha_lo[i] + beta_lo[i] * x), from=-4, to=4, add=TRUE)
 }
 
-# TODO
 
 
 # Prior predictive simulaion (Stan)
@@ -57,21 +56,20 @@ data_ls <- list(N=N, x=x)
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 pps <- mdl$sample(data=data_ls, fixed_param=TRUE)
 samples <- pps$draws(format="df")
-mu <- pps$draws("mu", format="matrix")
 x_seq <- seq(1,4, length.out=N)
 
-
-##########################
-
-# TODO
-
-fit$cmdstan_diagnose()
-fit$print()
-
-# Samples
+# Helper function
 #
-mu <- fit$draws(variables = "mu", format = "matrix")
-# D_tilde <- fit$draws(variables = "D_tilde", format = "matrix")
+sigmoid <- function(x) 1 / (1 + exp(-x))
+
+# Prior implications 
+#
+# alpha prior
+alpha_p <- sigmoid(samples$alpha)
+plot(density(alpha_p))
+# beta prior
+beta_p <- sigmoid(samples$beta)
+plot(density(beta_p))
 
 # Parameter preparation
 #
