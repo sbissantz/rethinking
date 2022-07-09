@@ -4,6 +4,12 @@
 
 # Logistic regression
 #
+
+install.packages(c("coda","mvtnorm","devtools","loo","dagitty","shape"))
+remotes::install_github("rmcelreath/rethinking")
+
+install.packages(c("coda","mvtnorm","devtools","loo","dagitty","shape"))
+
 library(rethinking)
 data(chimpanzees)
 d <- chimpanzees
