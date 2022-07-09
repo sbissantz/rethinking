@@ -5,11 +5,6 @@
 # Logistic regression
 #
 
-install.packages(c("coda","mvtnorm","devtools","loo","dagitty","shape"))
-remotes::install_github("rmcelreath/rethinking")
-
-install.packages(c("coda","mvtnorm","devtools","loo","dagitty","shape"))
-
 library(rethinking)
 data(chimpanzees)
 d <- chimpanzees
@@ -52,49 +47,8 @@ for(i in 1:50) {
 
 
 
-# Prior predictive simulaion (Stan)
-#
-path <- "~/projects/stanmisc/stan/11/"
-file <- file.path(path, "pps_1.stan")
-x <- d$treatment 
-N <- nrow(d)
-data_ls <- list(N=N, x=x)
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-pps <- mdl$sample(data=data_ls, fixed_param=TRUE)
-samples <- pps$draws(format="df")
-x_seq <- seq(1,4, length.out=N)
-
-# Helper function
-#
-sigmoid <- function(x) 1 / (1 + exp(-x))
-
-# Prior implications 
-#
-# alpha prior
-alpha_p <- sigmoid(samples$alpha)
-plot(density(alpha_p))
-# beta prior
-beta_p <- sigmoid(samples$beta)
-plot(density(beta_p))
-
-# Parameter preparation
-#
-mu_mean <- apply(mu, 2, mean)
-mu_HPDI <- apply(mu, 2, rethinking::HPDI)
-D_tilde_HPDI <- apply(D_tilde, 2, rethinking::HPDI)
-
-# Posterior predictive plots
-#
-plot(mu_mean ~ d$D, ylab = "Predicted divorce", xlab = "Observed divorce", 
-     pch = 20, col = "lightblue")
-abline(a = 0, b = 1, lty = 2)  
-# Posterior line uncertainty 
-for (i in seq(1:nrow(d))) lines(rep(d$D[i], 2), mu_HPDI[, i], 
-                                 col = alpha("black", 0.7))
-# Posterior uncertainty 
-for (i in seq(1:nrow(d))) lines(rep(d$D[i], 2), D_tilde_HPDI[,i], 
-                                 col = alpha("black", 0.3))
-
+library("bayesplot")
+library("rstanarm")
 
 ##########################
 
