@@ -2,10 +2,6 @@ data {
   int<lower=0> N;
   vector[N] x;
 }
-transformed parameters {
-  alpha_p = inv_logit(alpha)
-  beta_p = inv_logit(beta)
-}
 generated quantities {
   real alpha = normal_rng(0, 1.5);
   real beta = normal_rng(0, 0.5);
