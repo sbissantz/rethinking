@@ -4,7 +4,6 @@
 
 # Logistic regression
 #
-
 library(rethinking)
 data(chimpanzees)
 d <- chimpanzees
@@ -46,8 +45,6 @@ for(i in 1:50) {
     curve(sigmoid(alpha_lo[i] + beta_lo[i] * x), from=-4, to=4, add=TRUE)
 }
 
-
-
 # Stan Workflow
 #
 path <- "~/projects/stanmisc"
@@ -85,8 +82,45 @@ plot(density(beta_p))
 # Simulated data sets
 y_tilde <- fit$draws("y_tilde", format="matrix")
 
+# Posterior line predictions
+#
+plot(c(-4,4), c(0,1), type="n", ylab="Pr(pull_left)",
+     xlab="Predictor values", main="Prior predictive simulation")
+for(i in 1:50) {
+    curve(sigmoid(alpha_lo[i] + beta_lo[i] * x), from=-4, to=4, add=TRUE)
+}
+
 # Prior preditive distribution
-plot(density(y_tilde[1,]), ylim=c(0,35), main="Prior predictive", xlab="y_tilde")
+#
+plot(density(y_tilde[1,]), xlim=c(-1, 2), ylim=c(0,35), main="Prior
+     predictive", xlab="y_tilde")
 for(i in 1:500) {
   lines(density(y_tilde[i,]), col=col.alpha("black", 0.2))
 }
+
+# trimmed data list
+dat_list <- list(
+    pulled_left = d$pulled_left,
+    actor = d$actor,
+    treatment = as.integer(d$treatment) )
+m11.4a <- ulam(
+    alist(
+        pulled_left ~ dbinom( 1 , p ) ,
+        logit(p) <- a[actor] + b[treatment] ,
+        a[actor] ~ dnorm( 0 , 1.5 ),
+        b[treatment] ~ dnorm( 0 , 0.5 )
+    ) , data=dat_list , chains=4 , log_lik=TRUE )
+stancode(m11.4a)
+
+m11.4b <- ulam(
+    alist(
+        pulled_left ~ dbinom( 1 , p ) ,
+        logit(p) <- a + b[treatment] ,
+        a ~ dnorm( 0 , 1.5 ),
+        b[treatment] ~ dnorm( 0 , 0.5 )
+    ) , data=dat_list , chains=4 , log_lik=TRUE )
+stancode(m11.4b)
+
+
+
+
