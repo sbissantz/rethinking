@@ -47,6 +47,13 @@ for(i in 1:50) {
 
 # Stan Workflow
 #
+# Model sketch
+#
+# y_i ~ bernoulli(p_i)
+# aid: actor id ; txid: treatment id
+# logit(p_i) = alpha_aid[i] + beta_txid[i]
+# alpha_aid[i] ~ normal(0,1.5)
+# beta_txid[i] ~ normal(0,0.5)
 path <- "~/projects/stanmisc"
 file <- file.path(path, "stan", "11", "pps_1.stan") 
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
@@ -120,7 +127,6 @@ m11.4b <- ulam(
         b[treatment] ~ dnorm( 0 , 0.5 )
     ) , data=dat_list , chains=4 , log_lik=TRUE )
 stancode(m11.4b)
-
 
 
 
