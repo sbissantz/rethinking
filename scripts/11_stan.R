@@ -55,10 +55,9 @@ for(i in 1:50) {
 # alpha_aid[i] ~ normal(0,1.5)
 # beta_txid[i] ~ normal(0,0.5)
 path <- "~/projects/stanmisc"
-file <- file.path(path, "stan", "11", "pps_1.stan") 
+file <- file.path(path, "stan", "11", "pps_1a.stan") 
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 
-# 504 trials 
 dat_ls <- list(N=nrow(d), x=d$treatment)
 fit <- mdl$sample(data=dat_ls, fixed_param=TRUE)
 
@@ -105,28 +104,64 @@ for(i in 1:500) {
   lines(density(y_tilde[i,]), col=col.alpha("black", 0.2))
 }
 
-# trimmed data list
-dat_list <- list(
-    pulled_left = d$pulled_left,
-    actor = d$actor,
-    treatment = as.integer(d$treatment) )
-m11.4a <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a[actor] + b[treatment] ,
-        a[actor] ~ dnorm( 0 , 1.5 ),
-        b[treatment] ~ dnorm( 0 , 0.5 )
-    ) , data=dat_list , chains=4 , log_lik=TRUE )
-stancode(m11.4a)
+# Second model – Stan workflow!
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "pps_1b.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 
-m11.4b <- ulam(
-    alist(
-        pulled_left ~ dbinom( 1 , p ) ,
-        logit(p) <- a + b[treatment] ,
-        a ~ dnorm( 0 , 1.5 ),
-        b[treatment] ~ dnorm( 0 , 0.5 )
-    ) , data=dat_list , chains=4 , log_lik=TRUE )
-stancode(m11.4b)
+dat_ls <- list(N=nrow(d), tid=d$treatment)
+fit <- mdl$sample(data=dat_ls, fixed_param=TRUE)
 
+fit$cmdstan_diagnose()
+fit$summary()
 
+# Samples from the posterior 
+samples <- fit$draws(format="data.frame")
+
+# Helper function 
+sigmoid <- function(x) 1 / (1 + exp(-x))
+
+# alpha (log_odds)
+(alpha_lo <- samples$alpha)
+# beta (log odds)
+(beta_lo <-  fit$draws("beta", format="matrix"))
+
+# alpha (prob)
+alpha_p <- sigmoid(alpha_lo)
+plot(density(alpha_p))
+# beta (prob)
+beta_p <- sapply(1:4, function(k) sigmoid(beta_lo[,k]))
+op <- par(no.readonly = TRUE)
+par(mfrow=c(2,2))
+for (i in 1:4) {
+    plot(density(beta_p[,i]))
+}
+par(op)
+
+# Prior line predictive simulation
+#
+par(mfrow=c(2,2))
+for(k in 1:4) {
+  plot(c(-4,4), c(0,1), type="n", ylab="Pr(pull_left)",
+     xlab="Predictor values", main="Prior line predictive simulation")
+  for(i in 1:50) {
+    curve(sigmoid(alpha_lo[i] + beta_lo[i,k] * x), from=-4, to=4, add=TRUE)
+}}
+par(op)
+
+# Prior predictive contrasts between treatments
+#
+p <- sapply(1:4, function(k) sigmoid(alpha_lo + beta_lo[,k]))
+dens( abs( p[,1]  - p[,2]) )
+
+# Prior predictions
+#
+y_tilde <- fit$draws("y_tilde", format="matrix")
+
+plot(density(y_tilde[1,]), xlim=c(-1, 2), ylim=c(0,35), main="Prior
+     predictive", xlab="y_tilde")
+for(i in 1:500) {
+  lines(density(y_tilde[i,]), col=col.alpha("black", 0.2))
+}
 
