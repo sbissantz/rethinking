@@ -8,7 +8,7 @@ generated quantities {
   // Make it more efficient (someday)
   vector[4] beta;
     for (i in 1:4) {
-      //normal_rng(0, 10);
+      //beta[i] = normal_rng(0, 0.5);
       beta[i] = normal_rng(0, 0.5);
       } 
   array[N] int y_tilde;
