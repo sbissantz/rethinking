@@ -154,9 +154,14 @@ par(op)
 #
 p <- sapply(1:4, function(k) sigmoid(alpha_lo + beta_lo[,k]))
 dens( abs( p[,1]  - p[,2]) )
+# Prior predictive difference
+mean( abs( p[,1]  - p[,2]) )
+# [1] 0.09678439
+#...10% average prior difference between Txs 
 
 # Prior predictions
 #
+# Comprare the distribution of zero and ones across experiments
 y_tilde <- fit$draws("y_tilde", format="matrix")
 
 plot(density(y_tilde[1,]), xlim=c(-1, 2), ylim=c(0,35), main="Prior
@@ -164,4 +169,22 @@ plot(density(y_tilde[1,]), xlim=c(-1, 2), ylim=c(0,35), main="Prior
 for(i in 1:500) {
   lines(density(y_tilde[i,]), col=col.alpha("black", 0.2))
 }
+
+# Prior predictions
+#
+# Comprare minimum and maximum of zero & ones across experiments
+N <- 5e2
+plot(x=c(1,N), y=c(0,1), type="n")
+for(i in 1:N) { 
+  y_cord_1 <- length(which(y_tilde[i,] == 0)) / 504
+  y_cord_2 <- length(which(y_tilde[i,] == 1)) / 504
+  points(rep(i,2), c(y_cord_1, y_cord_2), pch=20, cex=.4)
+  lines(rep(i,2), c(y_cord_1, y_cord_2), pch=20, lwd=.5, col="steelblue")
+}
+
+
+
+
+
+
 
