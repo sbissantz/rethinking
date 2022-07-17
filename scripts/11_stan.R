@@ -153,7 +153,7 @@ par(op)
 # Prior predictive contrasts between treatments
 #
 p <- sapply(1:4, function(k) sigmoid(alpha_lo + beta_lo[,k]))
-dens( abs( p[,1]  - p[,2]) )
+plot(density(( abs( p[,1]  - p[,2]) )))
 # Prior predictive difference
 mean( abs( p[,1]  - p[,2]) )
 # [1] 0.09678439
@@ -182,9 +182,43 @@ for(i in 1:N) {
   lines(rep(i,2), c(y_cord_1, y_cord_2), pch=20, lwd=.5, col="steelblue")
 }
 
+# 
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_1.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 
+(ano <- length(unique(d$actor)))
+(tno <- length(unique(d$treatment)))
+dat_ls <- list(N=nrow(d), ano=ano, tno=tno, tid=d$treatment, aid=d$actor, y=d$pulled_left)
+fit <- mdl$sample(data=dat_ls)
 
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
+fit$summary(variables=c("alpha", "beta"))
 
+# Samples from the posterior 
+samples <- fit$draws(format="data.frame")
+# Helper function 
+# sigmoid <- function(x) 1 / (1 + exp(-x))
+
+# alpha & beta on the probability scale
+(alpha_p <-  fit$draws("alpha_p", format="matrix"))
+(beta_p <-  fit$draws("beta_p", format="matrix"))
+
+# Visualize
+op <- par(no.readonly=TRUE)
+# alpha
+par(mfrow=c(3,3))
+for(i in 1:ano) {
+ plot(density(alpha_p[,i])) 
+}
+# beta
+par(mfrow=c(2,2))
+for(i in 1:tno) {
+ plot(density(beta_p[,i])) 
+}
+par(op)
 
 
 
