@@ -9,6 +9,21 @@ d <- chimpanzees
 # Create a treatment variable
 d$treatment <- 1 + d$prosoc_left + 2*d$condition
 
+# Model sketch
+#
+# y_i ~ bernoulli(p_i)
+# aid: actor id ; txid: treatment id
+# logit(p_i) = alpha_aid[i] + beta_txid[i]
+# alpha_aid[i] ~ normal(0,1.5)
+# beta_txid[i] ~ normal(0,0.5)
+# Note: I dont simulate alpha as categorical variable. I just do this for beta.
+# If you want to do the same for alpha, simple add the categorical predictor to
+# the stan model, and use the same code for alpha as you did for beta.
+
+#
+# R wokflow (incomplete)
+#
+
 # Model
 # L_i ~ Bernoulli(p)
 # logit(p_i) = alpha[actor_i] + beta[treatment_i]
@@ -44,18 +59,10 @@ for(i in 1:50) {
     curve(sigmoid(alpha_lo[i] + beta_lo[i] * x), from=-4, to=4, add=TRUE)
 }
 
-# Stan Workflow
+# Stan Workflow (complete)
 #
 # Model sketch
 #
-# y_i ~ bernoulli(p_i)
-# aid: actor id ; txid: treatment id
-# logit(p_i) = alpha_aid[i] + beta_txid[i]
-# alpha_aid[i] ~ normal(0,1.5)
-# beta_txid[i] ~ normal(0,0.5)
-# Note: I dont simulate alpha as categorical variable. I just do this for beta.
-# If you want to do the same for alpha, simple add the categorical predictor to
-# the stan model, and use the same code for alpha as you did for beta.
 
 path <- "~/projects/stanmisc"
 file <- file.path(path, "stan", "11", "pps_1b.stan") 
@@ -132,44 +139,4 @@ for(i in 1:N) {
   points(rep(i,2), c(y_cord_1, y_cord_2), pch=20, cex=.4)
   lines(rep(i,2), c(y_cord_1, y_cord_2), pch=20, lwd=.5, col="steelblue")
 }
-
-# 
-#
-path <- "~/projects/stanmisc"
-file <- file.path(path, "stan", "11", "mdl_1.stan") 
-mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-
-(ano <- length(unique(d$actor)))
-(tno <- length(unique(d$treatment)))
-dat_ls <- list(N=nrow(d), ano=ano, tno=tno, tid=d$treatment, aid=d$actor, y=d$pulled_left)
-fit <- mdl$sample(data=dat_ls)
-
-fit$cmdstan_diagnose()
-fit$cmdstan_summary()
-fit$summary(variables=c("alpha", "beta"))
-
-# Samples from the posterior 
-samples <- fit$draws(format="data.frame")
-# Helper function 
-# sigmoid <- function(x) 1 / (1 + exp(-x))
-
-# alpha & beta on the probability scale
-(alpha_p <-  fit$draws("alpha_p", format="matrix"))
-(beta_p <-  fit$draws("beta_p", format="matrix"))
-
-# Visualize
-op <- par(no.readonly=TRUE)
-# alpha
-par(mfrow=c(3,3))
-for(i in 1:ano) {
- plot(density(alpha_p[,i])) 
-}
-# beta
-par(mfrow=c(2,2))
-for(i in 1:tno) {
- plot(density(beta_p[,i])) 
-}
-par(op)
-
-
 
