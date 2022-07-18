@@ -220,5 +220,58 @@ for(i in 1:tno) {
 }
 par(op)
 
+# Handedness preferences
+#
+actors <- fit$draws("alpha_p", format="matrix")
+actors_mu <- apply(actors, 2, mean)
+actors_HPDI <- apply(actors, 2, rethinking::HPDI)
+dotchart(actors_mu, xlim=c(0,1), pch=20)
+#points(c(actors_HPDI[1,], actors_HPDI[2,]), rep(seq(ncol(actors)),2), pch=20)
+for (i in 1:ncol(actors)) {
+  lines(c(actors_HPDI[1,i], actors_HPDI[2,i]), rep(i,2), lwd=1, lty=2)
+}
+mtext("Posterior means & 89% HPDIs")
+
+actors <- fit$draws("alpha_p", format="matrix")
+actors_mu <- apply(actors, 2, mean)
+actors_HPDI <- apply(actors, 2, rethinking::HPDI)
+dotchart(actors_mu, xlim=c(0,1), pch=20)
+#points(c(actors_HPDI[1,], actors_HPDI[2,]), rep(seq(ncol(actors)),2), pch=20)
+for (i in 1:ncol(actors)) {
+  lines(c(actors_HPDI[1,i], actors_HPDI[2,i]), rep(i,2), lwd=1, lty=2)
+}
+abline(v = .5, lty=3)
+mtext("Posterior means & 89% HPDIs")
+
+# Difference between TXs
+#
+txs <- fit$draws("beta_p", format="matrix")
+txs_mu <- apply(txs, 2, mean)
+txs_HPDI <- apply(txs, 2, rethinking::HPDI)
+dotchart(txs_mu, xlim=c(0,1), pch=20)
+#points(c(actors_HPDI[1,], actors_HPDI[2,]), rep(seq(ncol(actors)),2), pch=20)
+for (i in 1:ncol(txs)) {
+  lines(c(txs_HPDI[1,i], txs_HPDI[2,i]), rep(i,2), lwd=1, lty=2)
+}
+abline(v = .5, lty=3)
+mtext("Posterior means & 89% HPDIs")
+
+# TODO: Contrasts!
+#
+
+
+# Prior predictive checks
+# (bayesplot version)
+y <- d$pulled_left 
+yrep <- fit$draws("y_tilde", format="matrix") 
+bayesplot::color_scheme_set("brightblue")
+bayesplot::ppc_dens_overlay(y, yrep[1:100, ])
+
+
+
+
+
+
+
 
 
