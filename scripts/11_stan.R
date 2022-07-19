@@ -162,6 +162,7 @@ mean( abs( p[,1]  - p[,2]) )
 # Prior predictions
 #
 # Comprare the distribution of zero and ones across experiments
+# approx. the same as bayesplot::ppc_dens_obverlay()
 y_tilde <- fit$draws("y_tilde", format="matrix")
 
 plot(density(y_tilde[1,]), xlim=c(-1, 2), ylim=c(0,35), main="Prior
@@ -169,6 +170,13 @@ plot(density(y_tilde[1,]), xlim=c(-1, 2), ylim=c(0,35), main="Prior
 for(i in 1:500) {
   lines(density(y_tilde[i,]), col=col.alpha("black", 0.2))
 }
+
+# Prior predictive checks
+# (bayesplot version)
+y <- d$pulled_left 
+yrep <- fit$draws("y_tilde", format="matrix") 
+bayesplot::color_scheme_set("brightblue")
+bayesplot::ppc_dens_overlay(y, yrep[1:100, ])
 
 # Prior predictions
 #
@@ -182,7 +190,7 @@ for(i in 1:N) {
   lines(rep(i,2), c(y_cord_1, y_cord_2), pch=20, lwd=.5, col="steelblue")
 }
 
-# 
+# Condition the prior on the data!
 #
 path <- "~/projects/stanmisc"
 file <- file.path(path, "stan", "11", "mdl_1.stan") 
@@ -190,7 +198,8 @@ mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 
 (ano <- length(unique(d$actor)))
 (tno <- length(unique(d$treatment)))
-dat_ls <- list(N=nrow(d), ano=ano, tno=tno, tid=d$treatment, aid=d$actor, y=d$pulled_left)
+dat_ls <- list(N=nrow(d), ano=ano, tno=tno, tid=d$treatment, aid=d$actor,
+               y=d$pulled_left)
 fit <- mdl$sample(data=dat_ls)
 
 fit$cmdstan_diagnose()
@@ -256,19 +265,38 @@ for (i in 1:ncol(txs)) {
 abline(v = .5, lty=3)
 mtext("Posterior means & 89% HPDIs")
 
-# TODO: Contrasts!
+# Contrasts distribution
 #
+# Differences on the log-odds scale
+txs <- fit$draws("beta", format="matrix")
+# Differences on the probability scale
+txs <- fit$draws("beta_p", format="matrix")
 
+# Contrast distributions "cd"
+#
+(cdtx13 <- txs[,1] - txs[,3])
+(cdtx24 <- txs[,2] - txs[,4])
 
-# Prior predictive checks
-# (bayesplot version)
-y <- d$pulled_left 
-yrep <- fit$draws("y_tilde", format="matrix") 
-bayesplot::color_scheme_set("brightblue")
-bayesplot::ppc_dens_overlay(y, yrep[1:100, ])
+# Mean difference in contrasts
+mu_dtx13 <- apply(cdtx13, 2, mean)
+mu_dtx24 <- apply(cdtx24, 2, mean)
+mu_dtxs <- cbind(mu_dtx13, mu_dtx24)
+# Contrast HPDIS
+HPDI_dtx13 <- apply(cdtx13, 2, rethinking::HPDI)
+HPDI_dtx24 <- apply(cdtx24, 2, rethinking::HPDI)
+HPDI_dtxs <- cbind(HPDI_dtx13, HPDI_dtx24)
 
+# Visualize
+#
+# c(mu_dtxs) to get a numeric vector 
+dotchart(c(mu_dtxs), xlim=c(-1,1), labels=c("mu_dtx13", "mu_dtx24"), pch=20) 
+for (i in 1:ncol(HPDI_dtxs)) {
+  lines(c(HPDI_dtxs[1,i], HPDI_dtxs[2,i]), rep(i,2), lwd=1, lty=2)
+}
+abline(v=0, lty=3)
 
-
+# TODO: Posterior predictions p.333
+#
 
 
 
