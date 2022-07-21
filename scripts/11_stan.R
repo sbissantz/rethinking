@@ -213,7 +213,9 @@ samples <- fit$draws(format="data.frame")
 
 # alpha & beta on the probability scale
 (alpha_p <-  fit$draws("alpha_p", format="matrix"))
+(alpha_lo <-  fit$draws("alpha", format="matrix"))
 (beta_p <-  fit$draws("beta_p", format="matrix"))
+(beta_lo <-  fit$draws("beta", format="matrix"))
 
 # Visualize
 op <- par(no.readonly=TRUE)
@@ -298,8 +300,67 @@ abline(v=0, lty=3)
 # TODO: Posterior predictions p.333
 #
 
+# Proportion: How often does each chimpanzee pulled the left lever?
+pl <- by(d$pulled_left, list(d$actor, d$treatment), mean)
+pl[1,] 
+
+# Visualize the observed data
+#
+par(mfrow=c(1,7))
+for(actor in 1:7) { 
+  plot(NULL, xlim=c(1,4), ylim=c(0,1), ylab="Proportion left lever") 
+  txs_left <- c(1,3) ; txs_right <- c(2,4)
+  lines(txs_left, pl[actor, txs_left]) 
+  lines(c(2,4), pl[actor, txs_right])
+  txs_np <- c(1,2) ; txs_p <- c(3,4) 
+  points(txs_np, pl[actor, txs_np], pch=20)
+  points(txs_p, pl[actor, txs_p], pch=20, col="steelblue")
+}
+
+# Visualize the models expectations
+#
+# Crux: use an array!
+(n_row <- ano)
+(n_col <- tno)
+(n_lay <- nrow(alpha_lo)) 
+post_p <- array(NA, dim=c(n_row, n_col, n_lay))
+for(i in 1:7) for(j in 1:4) post_p[i,j,] <- sigmoid(alpha_lo[,i] + beta_lo[,j])
+# Crux: calc mean over actors and treatments across all samples 
+(post_p_mu <- apply(post_p, c(1,2), mean))
+(post_p_HPDI <- apply(post_p, c(1,2), rethinking::HPDI))
+
+actor <- 1
+plot(NULL, xlim=c(1,4), ylim=c(0,1), ylab="Proportion left lever")
+txs_left <- c(1,3) ; txs_right <- c(2,4)
+lines(txs_left, post_p_mu[actor, txs_left]) 
+lines(c(2,4), post_p_mu[actor, txs_right])
+txs_np <- c(1,2) ; txs_p <- c(3,4) 
+points(txs_np, post_p_mu[actor, txs_np], pch=20)
+points(txs_p, post_p_mu[actor, txs_p], pch=20, col="steelblue")
+abline(h=.5, lty=2)
+
+# TODO: Add the HPDI's and then you have a mega snippet to do these sorts of 
+# visualizations!
+#
 
 
+
+d$pulled_left
+pl <- by(d$pulled_left, list(d$actor, d$treatment), mean)
+
+
+dat_ls <- list(N=nrow(d), tid=d$treatment, aid=d$actor, y=d$pulled_left)
+
+m11.4 <- ulam( alist(
+                    y ~ dbinom(1, p),
+                    logit(p) <- a[aid] + b[tid],
+                    a[aid] ~ dnorm(0,1.5),
+                    b[tid] ~ dnorm(0,0.5))
+, data=dat_ls, chains=4)
+
+stancode(m11.4)
+dat <- list(aid=rep(1:7, each=4), tid=rep(1:4, times=7))
+p_post <- link(m11.4, dat=dat)
 
 
 
