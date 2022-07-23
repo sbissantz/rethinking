@@ -334,6 +334,7 @@ for(i in 1:ano) for(j in 1:tno) post_p[i,j,] <- sigmoid(alpha_lo[,i] + beta_lo[,
 (post_p_mu <- apply(post_p, c(1,2), mean))
 (post_p_HPDI <- apply(post_p, c(1,2), rethinking::HPDI))
 
+for(actor in 1:7) { 
   txs <- 1:4 ; txs_left <- c(1,3) ; txs_right <- c(2,4) 
   txs_np <- c(1,2) ; txs_p <- c(3,4) 
   for(actor in 1:7) { 
@@ -345,4 +346,81 @@ for(i in 1:ano) for(j in 1:tno) post_p[i,j,] <- sigmoid(alpha_lo[,i] + beta_lo[,
   for (i in txs) points(rep(i, 2), post_p_HPDI[c(1,2),actor,i], type="l")
   points(txs_np, post_p_mu[actor, txs_np], pch=20)
   points(txs_p, post_p_mu[actor, txs_p], pch=20, col="steelblue")
+  }
 }
+
+#
+# Model comparison
+#
+
+# Extract LL for model 1
+LL1 <- fit$draws("log_lik")
+rel_eff1 <- loo::relative_eff(exp(LL1))
+PSIS1 <- loo::loo(LL1, r_eff = rel_eff1, is_method="psis")
+
+# Deviance
+#
+(lppd1 <-  PSIS1$pointwise[,"elpd_loo"])
+(p_psis1 <-  PSIS1$pointwise[,"p_loo"])
+D1 <- -2*(lppd1-p_psis1)
+-2*(sum(lppd1)-sum(p_psis1))
+# [1] 548.8448
+
+# Approximate PSIS standard error 
+N1 <- dim(LL1)[3]
+PSIS_i1 <- -2*(lppd1-p_psis1)
+sqrt(N1 * var(PSIS_i1))
+# [1] 19.73713
+
+# Model 2
+#
+# Model without an interaction
+d$side <- d$prosoc_left + 1 #right 1, left 2
+d$cond <- d$condition + 1 #no partner 1, partner 2
+
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_2.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+
+(ano <- length(unique(d$actor)))
+(sno <- length(unique(d$side)))
+(cno <- length(unique(d$cond)))
+dat_ls <- list(N=nrow(d), ano=ano, sno=sno, cno=cno, aid=d$actor, sid=d$side,
+               cid = d$cond, y=d$pulled_left)
+fit2 <- mdl$sample(data=dat_ls)
+
+fit2$cmdstan_diagnose()
+fit2$cmdstan_summary()
+
+# Extract LL for model 2
+LL2 <- fit2$draws("log_lik")
+rel_eff2 <- loo::relative_eff(exp(LL2))
+PSIS2 <- loo::loo(LL2, r_eff = rel_eff2, is_method="psis")
+# Deviance
+(lppd2 <-  PSIS2$pointwise[,"elpd_loo"])
+(p_psis2 <-  PSIS2$pointwise[,"p_loo"])
+D2 <- -2*(lppd2-p_psis2)
+-2*(sum(lppd2)-sum(p_psis2))
+# [1] 545.9158
+# Approximate PSIS standard error 
+N2 <- dim(LL2)[3]
+PSIS_i2 <- -2*(lppd2-p_psis2)
+# Approximate standard error
+sqrt(N2 * var(PSIS_i2))
+# [1] 19.83971
+
+# Comparing the differences
+#
+sum(D_diff <- D1 - D2)
+N1 <- dim(LL1)[3]
+sqrt(N1 * var(D_diff))
+
+# Comparison with loo
+#
+loo::loo_compare(PSIS1, PSIS2)
+lpd_point <- cbind(PSIS1$pointwise[,"elpd_loo"], PSIS2$pointwise[,"elpd_loo"])
+#waic_wts <- exp(waics) / sum(exp(waics))
+pbma_wts <- loo::pseudobma_weights(lpd_point, BB=FALSE)
+pbma_BB_wts <- loo::pseudobma_weights(lpd_point) # default is BB=TRUE
+stacking_wts <- loo::stacking_weights(lpd_point)
+round(cbind(pbma_wts, pbma_BB_wts, stacking_wts), 2)
