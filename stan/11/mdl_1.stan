@@ -15,11 +15,15 @@ transformed parameters {
 }
 model { 
   alpha ~ normal(0,1.5);
-  beta ~ normal(0,1.5);
+  beta ~ normal(0,0.5);
   y ~ bernoulli_logit(p);
 }
 generated quantities { 
   array[N] int y_tilde = bernoulli_logit_rng(p);
   vector[ano] alpha_p = inv_logit(alpha);
   vector[tno] beta_p = inv_logit(beta);
+  vector[N] log_lik;
+  for (n in 1:N) {
+    log_lik[n] = bernoulli_logit_lpmf(y[n] | p[n]);
+  }
 }
