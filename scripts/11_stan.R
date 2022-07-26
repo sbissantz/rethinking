@@ -415,7 +415,7 @@ sum(D_diff <- D1 - D2)
 N1 <- dim(LL1)[3]
 sqrt(N1 * var(D_diff))
 
-# Comparison with loo
+# Model comparison (loo)
 #
 loo::loo_compare(PSIS1, PSIS2)
 lpd_point <- cbind(PSIS1$pointwise[,"elpd_loo"], PSIS2$pointwise[,"elpd_loo"])
@@ -424,3 +424,76 @@ pbma_wts <- loo::pseudobma_weights(lpd_point, BB=FALSE)
 pbma_BB_wts <- loo::pseudobma_weights(lpd_point) # default is BB=TRUE
 stacking_wts <- loo::stacking_weights(lpd_point)
 round(cbind(pbma_wts, pbma_BB_wts, stacking_wts), 2)
+
+# Cool trick
+#
+# aggregate(, sum) across factors (X) with respect to y to get a aggregated
+# data set. Neat!
+d_agg <- aggregate(d$pulled_left, #y: variate, 
+                   list(tid=d$treatment, aid=d$actor,
+                         sid=d$side, cid=d$cond), #X: covariates
+                   sum) 
+colnames(d_agg)[5] <- "y"
+
+range(d_agg$y)
+# [1]  2 18
+
+(ano <- length(unique(d$actor)))
+(sno <- length(unique(d$side)))
+(cno <- length(unique(d$cond)))
+dat_ls <- with(d_agg, list(N=nrow(d_agg), ano=ano, sno=sno, cno=cno, aid=aid, 
+                           sid=sid, cid = cid, y=y))
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_3.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit3 <- mdl$sample(data=dat_ls)
+
+fit3$cmdstan_diagnose()
+fit3$cmdstan_summary()
+fit3$summary()
+
+# Samples from the posterior 
+samples <- fit$draws(format="data.frame")
+
+# Extract LL for model 2
+LL2 <- fit2$draws("log_lik")
+LL3 <- fit3$draws("log_lik")
+rel_eff2 <- loo::relative_eff(exp(LL2))
+rel_eff3 <- loo::relative_eff(exp(LL3))
+PSIS2 <- loo::loo(LL2, r_eff = rel_eff2, is_method="psis")
+PSIS3 <- loo::loo(LL3, r_eff = rel_eff3, is_method="psis")
+
+# Model comparison not possible since not all models have the same number of
+# Obs! But we know these are the same date (aggregated vs not)
+loo::loo_compare(PSIS2, PSIS3)
+lpd_point <- cbind(PSIS1$pointwise[,"elpd_loo"], PSIS2$pointwise[,"elpd_loo"])
+#
+#
+(lppd2 <-  PSIS2$pointwise[,"elpd_loo"])
+(p_psis2 <-  PSIS2$pointwise[,"p_loo"])
+D2 <- -2*(lppd2-p_psis2)
+-2*(sum(lppd2)-sum(p_psis2))
+# [1] 546.4991
+# Approximate PSIS standard error 
+N2 <- dim(LL2)[3]
+PSIS_i2 <- -2*(lppd2-p_psis2)
+sqrt(N2 * var(PSIS_i2))
+# [1] 19.73713
+
+(lppd3 <-  PSIS3$pointwise[,"elpd_loo"])
+(p_psis3 <-  PSIS3$pointwise[,"p_loo"])
+D2 <- -2*(lppd3-p_psis3)
+-2*(sum(lppd3)-sum(p_psis3))
+# [1] 546.4991
+# Approximate PSIS standard error 
+N3 <- dim(LL3)[3]
+PSIS_i3 <- -2*(lppd3-p_psis3)
+sqrt(N3 * var(PSIS_i3))
+# [1] 19.73713
+
+
+# TODO: check again what is wrong
+#
+
+
+
