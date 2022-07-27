@@ -453,15 +453,15 @@ fit3$cmdstan_summary()
 fit3$summary()
 
 # Samples from the posterior 
-samples <- fit$draws(format="data.frame")
+samples <- fit3$draws(format="data.frame")
 
 # Extract LL for model 2
 LL2 <- fit2$draws("log_lik")
 LL3 <- fit3$draws("log_lik")
 rel_eff2 <- loo::relative_eff(exp(LL2))
 rel_eff3 <- loo::relative_eff(exp(LL3))
-PSIS2 <- loo::loo(LL2, r_eff = rel_eff2, is_method="psis")
-PSIS3 <- loo::loo(LL3, r_eff = rel_eff3, is_method="psis")
+(PSIS2 <- loo::loo(LL2, r_eff = rel_eff2, is_method="psis"))
+(PSIS3 <- loo::loo(LL3, r_eff = rel_eff3, is_method="psis"))
 
 # Model comparison not possible since not all models have the same number of
 # Obs! But we know these are the same date (aggregated vs not)
@@ -491,9 +491,7 @@ PSIS_i3 <- -2*(lppd3-p_psis3)
 sqrt(N3 * var(PSIS_i3))
 # [1] 19.73713
 
-
-# TODO: check again what is wrong
+# Import: If you want to calculate PSIS or WAIC use the non-aggregated form!
 #
-
 
 
