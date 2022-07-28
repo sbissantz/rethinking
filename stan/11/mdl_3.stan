@@ -21,13 +21,14 @@ transformed parameters {
     logis_p[i] = alpha[aid[i]] + beta[cid[i]] + gamma[sid[i]];
   }
   // Trick for binomial_lpmf
-  p = inv_logit(logis_p);
+  // p = inv_logit(logis_p);
+  // Note necessary when using binomial_logit!
 }
 model { 
   alpha ~ normal(0,1.5);
   beta ~ normal(0,0.5);
   gamma ~ normal(0,0.5);
-  y ~ binomial(N, p);
+  y ~ binomial_logit(N, logis_p);
 }
 generated quantities { 
   vector[N] log_lik;
