@@ -27,7 +27,7 @@ model {
   alpha ~ normal(0,1.5);
   beta ~ normal(0,0.5);
   gamma ~ normal(0,0.5);
-  y ~ binomial_logit(N, p);
+  y ~ binomial(N, p);
 }
 generated quantities { 
   vector[N] log_lik;

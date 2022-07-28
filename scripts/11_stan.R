@@ -492,6 +492,58 @@ sqrt(N3 * var(PSIS_i3))
 # [1] 19.73713
 
 # Import: If you want to calculate PSIS or WAIC use the non-aggregated form!
+# Inference remains the same in both methods
+
 #
+# Aggregated binomial 2
+#
+library(rethinking)
+data(UCBadmit)
+d <- UCBadmit
+
+# Model sketch
+#
+# A_i ~ binomial(N_i, p_i) # Note: N_i is a vector of different Ns
+# logit(p_i) = alpha_GID[i]
+# alpha_j ~ Normal(0, 1.5)
+
+# Data reduction
+#
+d$gid <- ifelse(d$applicant.gender=="male", 1, 2) 
+dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=length(unique(d$gid)))
+
+# Fit the model
+#
+file <- "~/projects/stanmisc/stan/11/mdl_4a.stan"
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
+fit$summary()
+
+# Posterior draws
+#
+post <- fit$draws(format="matrix")
+# Relative effect
+reldiff <- post[,"alpha_lo[1]"] - post[,"alpha_lo[2]"]
+mean(reldiff)
+# Proportional odds(?)
+exp(mean(reldiff))
+
+# Absolute effect
+absdiff <- post[,"alpha_p[1]"] - post[,"alpha_p[2]"]
+mean(absdiff)
+
+# TODO: Model is misscpecified
+#
+
+
+
+
+
+
 
 
