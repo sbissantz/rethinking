@@ -512,9 +512,21 @@ d <- UCBadmit
 d$gid <- ifelse(d$applicant.gender=="male", 1, 2) 
 dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=length(unique(d$gid)))
 
-# Fit the model
+# Fit the model (Note: less efficient than b)
 #
-file <- "~/projects/stanmisc/stan/11/mdl_4a.stan"
+#file <- "~/projects/stanmisc/stan/11/mdl_4a.stan"
+#mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+#fit <- mdl$sample(data=dat_ls)
+
+ Diagnostics
+
+#fit$cmdstan_diagnose()
+#fit$cmdstan_summary()
+#fit$summary()
+
+# Binomial_logit model
+# 
+file <- "~/projects/stanmisc/stan/11/mdl_4b.stan"
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
 fit <- mdl$sample(data=dat_ls)
 
@@ -529,21 +541,11 @@ fit$summary()
 post <- fit$draws(format="matrix")
 # Relative effect
 reldiff <- post[,"alpha_lo[1]"] - post[,"alpha_lo[2]"]
-mean(reldiff)
+cat(mean(reldiff), "+/-", sd(reldiff), "\n")
 # Proportional odds(?)
 exp(mean(reldiff))
 
 # Absolute effect
 absdiff <- post[,"alpha_p[1]"] - post[,"alpha_p[2]"]
-mean(absdiff)
-
-# TODO: Model is misscpecified
-#
-
-
-
-
-
-
-
+cat(mean(absdiff), "+/-", sd(absdiff), "\n")
 
