@@ -17,7 +17,7 @@ transformed parameters {
 }
 model {
   alpha_lo ~ normal(0, 1.5);
-  A ~ binomial( aid, p_logis );
+  A ~ binomial( aid, p );
 }
 generated quantities {
   vector[gno] alpha_p = inv_logit(alpha_lo);
