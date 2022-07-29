@@ -510,16 +510,18 @@ d <- UCBadmit
 # Data reduction
 #
 d$gid <- ifelse(d$applicant.gender=="male", 1, 2) 
-dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=length(unique(d$gid)))
-
+gno <- length(unique(d$gid))
+dno <- length(unique(d$dept))
+dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=gno)
 # Fit the model (Note: less efficient than b)
 #
 #file <- "~/projects/stanmisc/stan/11/mdl_4a.stan"
 #mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
 #fit <- mdl$sample(data=dat_ls)
 
- Diagnostics
 
+# Diagnostics
+#
 #fit$cmdstan_diagnose()
 #fit$cmdstan_summary()
 #fit$summary()
@@ -539,13 +541,98 @@ fit$summary()
 # Posterior draws
 #
 post <- fit$draws(format="matrix")
+
+# Contrasts
+#
 # Relative effect
 reldiff <- post[,"alpha_lo[1]"] - post[,"alpha_lo[2]"]
 cat(mean(reldiff), "+/-", sd(reldiff), "\n")
 # Proportional odds(?)
-exp(mean(reldiff))
-
+(q <- mean(exp(reldiff)))
+# [1] 1.846992
+# 84% increase in odds
 # Absolute effect
 absdiff <- post[,"alpha_p[1]"] - post[,"alpha_p[2]"]
 cat(mean(absdiff), "+/-", sd(absdiff), "\n")
+c(mean(absdiff) - sd(absdiff), mean(absdiff) + sd(absdiff))
+# 0.1418794 +/- 0.01374009 
+# About 12-15% increase in probability of admission...
+
+# PPC
+#
+x_max <- nrow(d)
+d$A_rate <- d$admit / d$applications 
+plot(x_range, d$A_rate, ylim=c(0,1), pch=20)
+x1 <- seq(1,x_max,by=2) ; y1_A <- d$A_rate[x1]
+x2 <- seq(2,x_max,by=2) ; y2_A <- d$A_rate[x2]
+for(i in 1:x_max) {
+  lines(c(x1[i], x2[i]), c(y1_A[i], y2_A[i]))
+}
+
+# Visualize the models expectations
+#
+p <- fit$draws("p", format="matrix")
+(p_mu <- apply(p, 2, mean))
+(p_HPDI <- apply(p, 2, rethinking::PI))
+for(i in seq(x_max)) {
+  points(i, p_mu[i], pch=20, col="steelblue")
+  lines(rep(i,2), c(p_HPDI[1,i], p_HPDI[2,i]))
+}
+y1_mu <- p_mu[x1] ; y2_mu <- p_mu[x2]
+for(i in 1:x_max) {
+  lines(c(x1[i], x2[i]), c(y1_mu[i], y2_mu[i]))
+}
+# For a simlle three-point summary a one-liner is enough
+#points(rep(i,3), c(p_HPDI[1,i], p_mu[i], p_HPDI[2,i]), type="b", lwd=2, cex=.3, pch=20) 
+
+#
+# Extended model
+#
+
+# Data reduction
+#
+d$gid <- ifelse(d$applicant.gender=="male", 1, 2) 
+gno <- length(unique(d$gid))
+dno <- length(unique(d$dept))
+d$did <- as.numeric(d$dept)
+dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=gno, did=d$did, dno=dno)
+
+file <- "~/projects/stanmisc/stan/11/mdl_5.stan"
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
+fit$summary()
+
+# Posterior draws
+#
+post <- fit$draws(format="matrix")
+
+# PPC
+#
+x_max <- nrow(d)
+d$A_rate <- d$admit / d$applications 
+plot(x_range, d$A_rate, ylim=c(0,1), pch=20)
+x1 <- seq(1,x_max,by=2) ; y1_A <- d$A_rate[x1]
+x2 <- seq(2,x_max,by=2) ; y2_A <- d$A_rate[x2]
+for(i in 1:x_max) {
+  lines(c(x1[i], x2[i]), c(y1_A[i], y2_A[i]))
+}
+
+# Visualize the models expectations
+#
+p <- fit$draws("p", format="matrix")
+(p_mu <- apply(p, 2, mean))
+(p_HPDI <- apply(p, 2, rethinking::PI))
+for(i in seq(x_max)) {
+  points(i, p_mu[i], pch=20, col="steelblue")
+  lines(rep(i,2), c(p_HPDI[1,i], p_HPDI[2,i]), col="steelblue")
+}
+y1_mu <- p_mu[x1] ; y2_mu <- p_mu[x2]
+for(i in 1:x_max) {
+  lines(c(x1[i], x2[i]), c(y1_mu[i], y2_mu[i]))
+}
 
