@@ -526,7 +526,9 @@ dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=gno)
 #fit$cmdstan_summary()
 #fit$summary()
 
+#
 # Binomial_logit model
+# ...to estimate the TOTAL causal effect of gender on admission
 # 
 file <- "~/projects/stanmisc/stan/11/mdl_4b.stan"
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
@@ -587,6 +589,7 @@ for(i in 1:x_max) {
 
 #
 # Extended model
+# ...to estimate the DIRECT causal effect of gender on admission
 #
 
 # Data reduction
@@ -613,6 +616,7 @@ post <- fit$draws(format="matrix")
 
 # PPC
 #
+x_range <- 1:x_max 
 x_max <- nrow(d)
 d$A_rate <- d$admit / d$applications 
 plot(x_range, d$A_rate, ylim=c(0,1), pch=20)
@@ -621,7 +625,6 @@ x2 <- seq(2,x_max,by=2) ; y2_A <- d$A_rate[x2]
 for(i in 1:x_max) {
   lines(c(x1[i], x2[i]), c(y1_A[i], y2_A[i]))
 }
-
 # Visualize the models expectations
 #
 p <- fit$draws("p", format="matrix")
@@ -635,4 +638,65 @@ y1_mu <- p_mu[x1] ; y2_mu <- p_mu[x2]
 for(i in 1:x_max) {
   lines(c(x1[i], x2[i]), c(y1_mu[i], y2_mu[i]))
 }
+
+#
+# Additional exercise from lecture
+#
+d$gid <- ifelse(d$applicant.gender=="male", 1, 2) 
+(gno <- length(unique(d$gid)))
+(dno <- length(unique(d$dept)))
+d$did <- as.numeric(d$dept)
+dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=gno,
+               did=d$did, dno=dno)
+
+# Reformulate the model
+#
+file <- "~/projects/stanmisc/stan/11/mdl_5b.stan"
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
+fit$summary()
+
+post <- fit$draws(format="data.frame")
+Alpha_p <- fit$draws("Alpha_p", format="matrix")
+
+(PrA_G1 <- Alpha_p[,1:6])
+(PrA_G2 <- Alpha_p[,7:12])
+diff_PrA <- sapply(1:6, function(i) PrA_G2[,i] - PrA_G1[,i])
+
+# Poststratification weights
+#
+cont.tab <- xtabs(d$applications ~ as.integer(d$dept))
+w <- cont.tab / sum(d$applications)
+
+# Visualize
+#
+plot(c(-0.4,0.4), c(0,25), type="n")
+strat <- (d$admit/d$applications * 10)
+for(i in 1:6) {
+  lines(density(diff_PrA[,i]), col=i+1, lwd=2+20*w[i])
+}
+abline(v=0, lty=2)
+text(-0.2, 20, "men adv" ) ; text(0.2, 20, "fem adv" )
+legend("topright", legend=paste("Dep", 1:6), lty=1, col=1:6)
+
+# PPD
+#
+y_tilde <- fit$draws("y_tilde", format="matrix")
+
+# If binomal_logit_rng would be implemented
+bayesplot::ppc_dens_overlay(d$admit, y_tilde[1:50,])
+
+
+
+
+
+
+
+
+
 
