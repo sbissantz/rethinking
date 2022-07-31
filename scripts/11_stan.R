@@ -563,6 +563,7 @@ c(mean(absdiff) - sd(absdiff), mean(absdiff) + sd(absdiff))
 # PPC
 #
 x_max <- nrow(d)
+x_range <- 1:x_max 
 d$A_rate <- d$admit / d$applications 
 plot(x_range, d$A_rate, ylim=c(0,1), pch=20)
 x1 <- seq(1,x_max,by=2) ; y1_A <- d$A_rate[x1]
@@ -661,28 +662,38 @@ fit$cmdstan_diagnose()
 fit$cmdstan_summary()
 fit$summary()
 
+#
+# Direct causal effect accross departments
+#
+
+# Posterior & additional variables
+#
 post <- fit$draws(format="data.frame")
 Alpha_p <- fit$draws("Alpha_p", format="matrix")
+p_diff <- fit$draws("p_diff", format="matrix")
+plot(density(p_diff))
 
+# Different version – same result
 (PrA_G1 <- Alpha_p[,1:6])
 (PrA_G2 <- Alpha_p[,7:12])
-diff_PrA <- sapply(1:6, function(i) PrA_G2[,i] - PrA_G1[,i])
+diff_PrA <- sapply(1:6, function(i) PrA_G1[,i] - PrA_G2[,i])
+plot(density(diff_PrA), xlab="Effect of gender perception")
 
-# Poststratification weights
+# Poststratification
 #
-cont.tab <- xtabs(d$applications ~ as.integer(d$dept))
-w <- cont.tab / sum(d$applications)
+(cont.tab <- xtabs(d$applications ~ as.integer(d$dept)))
+# Poststratification weights
+(w <- cont.tab / sum(d$applications))
 
 # Visualize
 #
-plot(c(-0.4,0.4), c(0,25), type="n")
-strat <- (d$admit/d$applications * 10)
+plot(c(-0.4,0.4), c(0,25), type="n", xlab="Gender contrast (probability)")
 for(i in 1:6) {
   lines(density(diff_PrA[,i]), col=i+1, lwd=2+20*w[i])
 }
 abline(v=0, lty=2)
-text(-0.2, 20, "men adv" ) ; text(0.2, 20, "fem adv" )
-legend("topright", legend=paste("Dep", 1:6), lty=1, col=1:6)
+text(-0.1, 20, "men adv" ) ; text(0.1, 20, "fem adv" )
+legend("topright", legend=paste("Dep", LETTERS[1:6]), lty=1, col=1:6, lwd=2)
 
 # PPD
 #
