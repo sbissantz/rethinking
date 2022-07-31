@@ -12,13 +12,16 @@ parameters {
 }
 transformed parameters {
   vector[N] p_logis;
+  vector[N] p_logis_m;
+  vector[N] p_logis_f;
     for(i in 1:N) {
       p_logis[i] = Alpha_lo[did[i],gid[i]];
+      p_logis_f[i] = Alpha_lo[did[i], 1];
+      p_logis_m[i] = Alpha_lo[did[i], 2];
     }
-    // Using the binomial_logit() parametrizaition I can stick p_logis
-    // directly into the likelihood function. Saves this line of code:
+    // Can't use 'binomial_logit()' because 'binomial_logit_rng() is not
+    // implemented'
      vector[N] p = inv_logit(p_logis);
-     //...and is more efficient
 }
 model {
   //Convert the matrix m to a column vector in column-major order.
@@ -27,6 +30,7 @@ model {
 }
 generated quantities {
   matrix[dno, gno] Alpha_p = inv_logit(Alpha_lo);
+  vector[N] p_diff = inv_logit(p_logis_f) - inv_logit(p_logis_m);
   // binomial_logit_rng() is not implemented yet!
   // Switch to binomial()
   array[N] int y_tilde = binomial_rng(aid, p);
