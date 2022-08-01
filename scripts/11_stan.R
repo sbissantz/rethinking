@@ -596,7 +596,6 @@ for(i in 1:x_max) {
 # Data reduction
 #
 d$gid <- ifelse(d$applicant.gender=="male", 1, 2) 
-gno <- length(unique(d$gid))
 dno <- length(unique(d$dept))
 d$did <- as.numeric(d$dept)
 dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=gno, did=d$did, dno=dno)
@@ -673,6 +672,11 @@ Alpha_p <- fit$draws("Alpha_p", format="matrix")
 p_diff <- fit$draws("p_diff", format="matrix")
 plot(density(p_diff))
 
+# Posterior correlations 
+#
+round(cor(Alpha_p), digits=2)
+# If the posterior correlations are too high, bump up the number of iterations
+
 # Different version – same result
 (PrA_G1 <- Alpha_p[,1:6])
 (PrA_G2 <- Alpha_p[,7:12])
@@ -700,7 +704,22 @@ legend("topright", legend=paste("Dep", LETTERS[1:6]), lty=1, col=1:6, lwd=2)
 y_tilde <- fit$draws("y_tilde", format="matrix")
 
 # If binomal_logit_rng would be implemented
+plot(density(d$amit))
 bayesplot::ppc_dens_overlay(d$admit, y_tilde[1:50,])
+
+# Poststratification weights
+(w <- cont.tab / sum(d$applications))
+
+#
+# Poisson GLM
+# ...and Oceanic tool complexity
+# 
+
+library(rethinking)
+data(Kline)
+d <- Kline
+# Note: The number of rows in a count model is not necessary the same as the
+# "sample size"!
 
 
 
