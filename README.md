@@ -26,6 +26,7 @@ they'll release a new version of the book before I need to buy it.
 ## Collection of awesome websites
 
 - https://mc-stan.org/
+- https://distribution-explorer.github.io/
 - https://chi-feng.github.io/mcmc-demo/
 - https://betanalpha.github.io/
 - https://statmodeling.stat.columbia.edu/
