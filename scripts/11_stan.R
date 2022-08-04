@@ -600,7 +600,7 @@ dno <- length(unique(d$dept))
 d$did <- as.numeric(d$dept)
 dat_ls <- list(N=nrow(d), aid=d$applications, gid=d$gid, A=d$admit, gno=gno, did=d$did, dno=dno)
 
-file <- "~/projects/stanmisc/stan/11/mdl_5.stan"
+file <- "~/projects/stanmisc/stan/11/mdl_5a.stan"
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
 fit <- mdl$sample(data=dat_ls)
 
@@ -711,21 +711,150 @@ bayesplot::ppc_dens_overlay(d$admit, y_tilde[1:50,])
 (w <- cont.tab / sum(d$applications))
 
 #
-# Poisson GLM
-# ...and Oceanic tool complexity
+# Additional lecture stuff
+# "Confounded admission"
 # 
+rbern <- function(N, p=.5) {
+  rbinom(N, size=1, p)
+}
+rbern(10)
 
-library(rethinking)
-data(Kline)
-d <- Kline
-# Note: The number of rows in a count model is not necessary the same as the
-# "sample size"!
+# Generative model
+# Gender (u): no parents
+# unobserved condound, e.g. ability (u): no parent
+# Department: D = f(G,u)
+# Admission: A = f(G, D, A)
 
+# Simulation
+N <- 2e3 # Number of applicants
+# G=1: female, G=2: male
+G <- rbern(N) + 1 
+# u=0: low ability (10%) u=1: high ability
+u <- rbern(N,0.1) 
+# Chances of applying to a particular appartment
+# G=1 (female) have 80% chance to apply to D=1 (psychology) 
+# G=1 (female) & high ability (u=1) have 50% chance to apply to D=2 (maths) 
+# D=1 (maths) discriminates against G=1 (females); but still apply, becuase
+# they thinkin they can overcome the penalty with high ability.
+p_apply <- ifelse(G==1, .5*u, .8) 
+D <- rbern(N, p_apply) + 1
+# Matrix of acceptance rates for average ability [D,G]
+(accept_rate_u0 <- matrix(c(0.1, 0.1, 0.1, 0.3), nrow=2))
+# Matrix of acceptance rates for high ability [D,G]
+(accept_rate_u1 <- matrix(c(0.2, 0.3, 0.2, 0.5), nrow=2))
+calc_p_admit <- function(i) {
+  ifelse(u[i] == 0, accept_rate_u0[D[i], G[i]], accept_rate_u1[D[i], G[i]])
+}
+p_admit <- sapply(1:N, calc_p_admit) 
+A <- rbern(N,p_admit)
 
+#
+# Model sketch
+#
+# Total causal effect
+# A ~ Bernoulli(p_i)
+# logit(p_i) = alpha_G[i]
+# alpha ~ normal(0,1) 
+#
+# Direct causal effect
+# A ~ Bernoulli(p_i)
+# logit(p_i) = alpha_GD[i]
+# alpha ~ normal(0,1) 
+#
 
+# Data reduction 
+#
+dat_ls <- list(N=N, A=A, did=D, gid=G, dno=length(unique(D)), gno=(length(unique(G)))  )
 
+# Fit the model (total)
+# 
+file <- "~/projects/stanmisc/stan/11/mdl_6a.stan"
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(data=dat_ls)
 
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
+fit$summary()
 
+# Total causal effect accross departments
+#
+post <- fit$draws(format="data.frame")
+alpha_p <- fit$draws("alpha_p", format="matrix")
+alpha_diff <- alpha_p[,1] - alpha_p[,2]
+plot(density(alpha_diff), xlim=c(-.4,0))
+
+# Discrimination
+#
+fit$summary("alpha_p")
+fit$summary("alpha_lo")
+
+# Fit the model
+#
+file <- "~/projects/stanmisc/stan/11/mdl_6b.stan"
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+#fit$cmdstan_diagnose()
+#fit$cmdstan_summary()
+#fit$summary()
+fit$summary("Alpha_p")
+fit$summary("Alpha_lo")
+
+# Total causal effect accross departments
+# confounded: collider bias
+#
+post <- fit$draws()
+Alpha_p <- fit$draws("Alpha_p")
+Alpha_lo <- fit$draws("Alpha_lo")
+# Contrasts on p sclae
+D1_FM_contrast_p <- Alpha_p[,,1] - Alpha_p[,,3]
+D2_FM_contrast_p <- Alpha_p[,,2] - Alpha_p[,,4]
+D1_FM_contrast_lo <- Alpha_lo[,,1] - Alpha_lo[,,3]
+D2_FM_contrast_lo <- Alpha_lo[,,2] - Alpha_lo[,,4]
+
+# Visualization (collider bias)
+#
+# p-scale
+plot(density(D1_FM_contrast_p), col="red", xlim = c(-.3,0.3), lwd=2,
+xlab="FM_contast")
+lines(density(D2_FM_contrast_p), col="blue", lwd=2)
+# lo-scale
+plot(density(D1_FM_contrast_lo), col="red", xlim = c(-1,1), lwd=2,
+xlab="FM_contast")
+lines(density(D2_FM_contrast_lo), col="blue", lwd=2)
+# High-ability (u=1) G1s (female) apply to D2 (maths) anyway.
+# G1s (female) in D2 (maths) have higher ability on average.
+# => Compensate for the discrimination.
+
+# Imaginge we ould measure the confound
+#
+# In the DAG "u" is an unobserved confound (fork). Need to block u by
+# conditioning on it. Thus we need to measure "u".
+dat_ls <- list(N=N, A=A, did=D, gid=G, dno=length(unique(D)), gno=(length(unique(G))), u=u)
+
+file <- "~/projects/stanmisc/stan/11/mdl_6c.stan"
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE) 
+fit <- mdl$sample(data=dat_ls)
+
+post <- fit$draws()
+Alpha_lo <- fit$draws("Alpha_lo")
+# Contrasts
+D1_FM_contrast_lo_2 <- Alpha_lo[,,1] - Alpha_lo[,,3]
+D2_FM_contrast_lo_2 <- Alpha_lo[,,2] - Alpha_lo[,,4]
+
+# Visualization 
+#
+# If we know the confound we could unmask the discrimination effect!
+# But actually we haven't observed u!
+plot(density(D1_FM_contrast_lo), col="blue", xlim = c(-1,1), lwd=1,
+xlab="FM_contast")
+lines(density(D2_FM_contrast_lo), col="red", lwd=1)
+lines(density(D1_FM_contrast_lo_2), col="blue", lwd=3)
+lines(density(D2_FM_contrast_lo_2), col="red", lwd=3)
 
 
 
