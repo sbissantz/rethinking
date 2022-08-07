@@ -31,6 +31,3 @@ model {
   A ~ bernoulli_logit(p_logis);
   D2 ~ bernoulli_logit(q_logis);
 }
-generated quantities {
-
-}
