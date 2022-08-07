@@ -1026,12 +1026,8 @@ mu_u <- colMeans(u_est)
 #  Visualize
 #
 N <- length(mu_u)
-j <- rnorm(N,0,0.01)
-plot(u+j, mu_u+j, pch=20, col=ifelse(dat_ls$G==1, "red", "blue"),
+j <- rnorm(N,0,0.04)
+plot(u+j, mu_u, pch=20, col=ifelse(dat_ls$G==1, "red", "blue"),
      ylab="Posterior mean u", xlab="u (true)") 
 mtext("Model correctly detected u, even though prior was uk ~ Normal(0,1)")
-
-
-
-
 

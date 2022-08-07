@@ -12,9 +12,9 @@ data {
 }
 parameters {
   matrix[gno, dno] Alpha;
-  real beta_u;
+  real<lower=0> beta_u;
   // Since we haven't observed u, we make it a parameter
-  vector<lower=0>[N] u;
+  vector[N] u;
   vector<lower=0>[tno] tau;
 }
 transformed parameters {
@@ -29,10 +29,9 @@ model {
   beta_u ~ normal(0,1);
   A ~ bernoulli_logit(p_logis);
   // Test score model
-  T1 ~ normal(u, tau[1]);
-  T2 ~ normal(u, tau[2]);
   T3 ~ normal(u, tau[3]);
+  T2 ~ normal(u, tau[2]);
+  T1 ~ normal(u, tau[1]);
   tau ~ exponential(1);
-  u ~ exponential(1);
+  u ~ normal(0,1);
 }
-
