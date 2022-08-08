@@ -1031,3 +1031,49 @@ plot(u+j, mu_u, pch=20, col=ifelse(dat_ls$G==1, "red", "blue"),
      ylab="Posterior mean u", xlab="u (true)") 
 mtext("Model correctly detected u, even though prior was uk ~ Normal(0,1)")
 
+#
+#
+# Poisson regression 
+#
+#
+
+library(rethinking)
+data(Kline)
+d <- Kline
+d
+
+# Data transformation 
+#
+# Standardized log population
+P_log <- log(d$population)
+P <- (P_log - mean(P_log)) / sd(P_log)
+# Contact rate id
+d$cid <- ifelse(d$contact=="low", 1, 2)
+
+# Model sketch
+#
+# T_i ~ Poission(lambda_i)
+# log(lambda_i) = alpha[CID[i]] + beta[CID[i]] * log P_i #IA: Popl & Tools
+# alpha_j ~  
+# beta_j ~  
+
+# PPS
+#
+# Prior implications
+# Import: log-normal!
+curve(dlnorm(x, 0, 10), from=-1, to=100)
+# How long are the tails?
+N <- 1e4
+alpha <- rnorm(N, 0, 10)
+lambda <- exp(alpha)
+mean(lambda)
+
+
+
+
+
+
+
+
+
+
