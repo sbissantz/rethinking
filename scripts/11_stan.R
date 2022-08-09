@@ -1058,22 +1058,62 @@ d$cid <- ifelse(d$contact=="low", 1, 2)
 # beta_j ~  
 
 # PPS
+
+# alpha
+curve(dlnorm(x, 3, .5), from=-1, to=100, n=200, xlab="mean number of tools")
 #
-# Prior implications
-# Import: log-normal!
-curve(dlnorm(x, 0, 10), from=-1, to=100)
-# How long are the tails?
-N <- 1e4
-alpha <- rnorm(N, 0, 10)
+# Simulate the expected number of tools (mean)
+#
+# log(lambda) = alpha
+alpha <- rnorm(N, 3, 0.5)
+# ...thereofre, lambda = exp(alpha)
 lambda <- exp(alpha)
 mean(lambda)
+#
+# Shorty: log(lambda) = alpha
+# If alpha has a normal, lambda has a log-normal
+lambda <- rlnorm(N, 3, 0.5)
+mean(lambda)
+#
+# Even shorter: mean of a log-normal distribution
+exp(3 + 0.5^2 /2)
 
+# beta (coefficient of log-population)
+N <- 1e2
+alpha <- rnorm(N, 3, 0.5)
+beta <- rnorm(N, 0, 0.25)
+#
+# Visualize on the log standardized scale
+#
+plot(NULL, xlim=c(-2,2), ylim=c(0,100), ylab="total tools",
+     xlab="log-population (std)")
+for (i in 1:N) curve(exp(alpha[i] + beta[i] * x), add=TRUE, col=grau())
+# Mean of beta
+exp(0 + 0.25^2/2)
+# log(lambda) = alpha + beta*x, thereofre lambda = exp(alpha + beta *x)
+alpha <- rnorm(N, 3, 0.5)
+beta <- rnorm(N,0, 0.25)
+lambda <- exp(alpha + beta)
+mean(lambda)
+#
+# Visualize on the log scale (unstandardized)
+#
+x_seq <- seq(from=log(1e2), to=log(2e4), length.out=1e2)
+lambda <- sapply(x_seq, function(x) exp( alpha + beta*x))
+plot(NULL, xlim=range(x_seq), ylim=c(0,500), xlab="log population", ylab="total tools")
+for(i in 1:N) lines(x_seq, lambda[i,], col=grau(), lwd=1.5)
+#
+# Visualize on the natural scale (un-log)
+#
+plot(NULL, xlim=range(exp(x_seq)), ylim=c(0,500), xlab="population", ylab="total tools")
+for (i in 1:N) lines(exp(x_seq), lambda[i,], col=grau())
 
-
-
-
-
-
+# Model sketch
+#
+# T_i ~ Poission(lambda_i)
+# log(lambda_i) = alpha[CID[i]] + beta[CID[i]] * log P_i #IA: Popl & Tools
+# alpha_j ~  normal(3, 0.5)
+# beta_j ~ normal(0, 0.2) 
 
 
 
