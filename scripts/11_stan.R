@@ -1046,7 +1046,7 @@ d
 #
 # Standardized log population
 P_log <- log(d$population)
-P <- (P_log - mean(P_log)) / sd(P_log)
+d$P <- (P_log - mean(P_log)) / sd(P_log)
 # Contact rate id
 d$cid <- ifelse(d$contact=="low", 1, 2)
 
@@ -1114,6 +1114,46 @@ for (i in 1:N) lines(exp(x_seq), lambda[i,], col=grau())
 # log(lambda_i) = alpha[CID[i]] + beta[CID[i]] * log P_i #IA: Popl & Tools
 # alpha_j ~  normal(3, 0.5)
 # beta_j ~ normal(0, 0.2) 
+
+# Reduction
+#
+N <- nrow(d)
+cno <- length(unique(d$cid))
+data_ls <- list(cno=cno, N=N, T = d$total_tools, C=d$cid, P=d$P)
+
+# Fit
+#
+file <- file.path("..", "stan", "11", "mdl_7.stan" )
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=data_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$summary()
+
+# Samples 
+#
+post <- fit$draws(c("alpha", "beta_P"))
+LL <- fit$draws("log_lik") 
+
+# Model comparison & Influential observations 
+# Note: I dont want to compare models but see influential points
+#
+r_eff <- loo::relative_eff(exp(LL))
+psis <- loo::loo(LL, r_eff=r_eff, is_method="psis")
+pareto_k <- psis$diagnostics$pareto_k
+plot(d$P, pareto_k, pch=20, ylim=c(0,1), xlim=c(-1.5, 2.5),
+ylab="Pateo k values", xlab="log population (std)")
+text(d$P+0.1, pareto_k+0.025, as.character(d$culture))
+
+# Visualization
+#
+
+
+
+
+
 
 
 
