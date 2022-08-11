@@ -1134,8 +1134,10 @@ fit$summary()
 
 # Samples 
 #
-post <- fit$draws(c("alpha", "beta_P"))
+post <- fit$draws(c("alpha", "beta_P"), format="matrix")
 LL <- fit$draws("log_lik") 
+#lambda_c1 <- exp(log_lambda_c1) ; lambda_c2 <- exp(log_lambda_c2) 
+#lambda_c1_mu <- colMeans(lambda_c1) ; lambda_c2_mu <- colMeans(lambda_c2)
 
 # Model comparison & Influential observations 
 # Note: I dont want to compare models but see influential points
@@ -1147,13 +1149,29 @@ plot(d$P, pareto_k, pch=20, ylim=c(0,1), xlim=c(-1.5, 2.5),
 ylab="Pateo k values", xlab="log population (std)")
 text(d$P+0.1, pareto_k+0.025, as.character(d$culture))
 
+# Interesting: p_loo
+#
+psis$estimates
+
 # Visualization
 #
+N_rep <- nrow(post)
+plot(NULL, xlim=range(d$P)+c(-1,.5), ylim=range(d$total_tools) + c(-5,5),
+     pch=20, cex=5*pareto_k, ylab="total tools", xlab="log population (std)")
+for(i in 1:100) {
+# high contact
+curve( exp(post[[i,"alpha[2]"]] + post[[i,"beta_P[2]"]] * x), 
+      from=-3, to=3, col=scales::alpha("cadetblue3", .2), add=TRUE)
+curve( exp(post[[i,"alpha[1]"]] + post[[i,"beta_P[1]"]] * x), 
+      from=-3, to=3, col=scales::alpha("steelblue", .2), add=TRUE)
+}
+curve( exp(mean(post[[i,"alpha[2]"]]) + mean(post[[i,"beta_P[2]"]]) * x), 
+      from=-3, to=3, col="cadetblue3", add=TRUE, lwd=4)
+curve( exp(mean(post[[i,"alpha[1]"]]) + mean(post[[i,"beta_P[1]"]]) * x), 
+      from=-3, to=3, col="steelblue", add=TRUE, lwd=4)
+points(d$P, d$total_tools,  pch=20, cex=5*pareto_k, col="black")
+text(d$P+0.1, d$total_tools+3, as.character(d$culture))
 
-
-
-
-
-
+# Calculation of the posterior mean is false
 
 
