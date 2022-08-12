@@ -1065,6 +1065,7 @@ curve(dlnorm(x, 3, .5), from=-1, to=100, n=200, xlab="mean number of tools")
 # Simulate the expected number of tools (mean)
 #
 # log(lambda) = alpha
+N <- 1e3
 alpha <- rnorm(N, 3, 0.5)
 # ...thereofre, lambda = exp(alpha)
 lambda <- exp(alpha)
@@ -1135,7 +1136,9 @@ fit$summary()
 # Samples 
 #
 post <- fit$draws(c("alpha", "beta_P"), format="matrix")
+log_lambda <- fit$draws("log_lambda", format="matrix")
 LL <- fit$draws("log_lik") 
+
 #lambda_c1 <- exp(log_lambda_c1) ; lambda_c2 <- exp(log_lambda_c2) 
 #lambda_c1_mu <- colMeans(lambda_c1) ; lambda_c2_mu <- colMeans(lambda_c2)
 
@@ -1172,6 +1175,54 @@ curve( exp(mean(post[[i,"alpha[1]"]]) + mean(post[[i,"beta_P[1]"]]) * x),
 points(d$P, d$total_tools,  pch=20, cex=5*pareto_k, col="black")
 text(d$P+0.1, d$total_tools+3, as.character(d$culture))
 
-# Calculation of the posterior mean is false
+# On the natural scale
+#
+N_rep <- nrow(post)
+x_lim <- range(d$population) + c(-1e3, 5e4)
+y_lim <- range(d$total_tools) + c(-5,5)
+cex <- 5*pareto_k ; 
+pch <- ifelse(d$cid==1,21, 20)
+plot(NULL, xlim=x_lim, ylim=y_lim, ylab="total tools", xlab="population")
+P_seq <- seq( from=-5, to=3, length.out=N_rep )
+mu_log_popl <- mean(log(d$population))
+sd_log_popl <- sd(log(d$population))
+# Unstandardize
+pop_seq <- exp(P_seq * sd_log_popl + mu_log_popl)
+# high contact
+lambda_c1 <- sapply(P_seq, function(x) 
+                    rpois(N_rep, exp(post[,"alpha[1]"] + 
+                                     post[,"beta_P[1]"] * x)))
+lambda_c1_mu <- colMeans(lambda_c1)
+lambda_c1_HPDI <- apply(lambda_c1, 2, rethinking::HPDI)
+# low contact 
+lambda_c2 <- sapply(P_seq, function(x) 
+                    rpois(N_rep, exp(post[,"alpha[2]"] + 
+                                     post[,"beta_P[2]"] * x)))
+lambda_c2_mu <- colMeans(lambda_c2)
+lambda_c2_HPDI <- apply(lambda_c2, 2, rethinking::HPDI)
+# Polygon 
+pop_seq_rev <- pop_seq[seq(length(pop_seq),1)]
+# High contact polyon 
+y <- c(lambda_c2_HPDI[1, ], lambda_c2_HPDI[2, ][seq(ncol(lambda_c2_HPDI),1)])
+x <- c(pop_seq, pop_seq_rev)
+col <- scales::alpha("steelblue", .2)
+polygon(x, y, col=col, border=col) 
+# Low contact polygon
+y <- c(lambda_c1_HPDI[1, ], lambda_c1_HPDI[2, ][seq(ncol(lambda_c1_HPDI),1)])
+x <- c(pop_seq, pop_seq_rev)
+col <- scales::alpha("cadetblue3", .2)
+polygon(x, y, col=col, border=col) 
+# Mean lines
+lines(pop_seq, lambda_c2_mu, col="steelblue", lwd=3)
+lines(pop_seq, lambda_c1_mu, col="cadetblue3", lwd=3)
+# Points & text
+points(d$population, d$total_tools,  pch=pch, cex=cex, col="black")
+text(d$population+3e4, d$total_tools, as.character(d$culture))
+
+
+
+
+
+
 
 
