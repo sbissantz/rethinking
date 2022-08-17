@@ -1269,3 +1269,59 @@ curve((mean(post[i,"alpha[1]"])*x^mean(post[i,"beta[1]"]))/mean(post[i, "gamma"]
 points(d$population, d$total_tools,  pch=pch, cex=cex, col="black")
 text(d$population+3e4, d$total_tools, as.character(d$culture))
 
+#
+# Example: Exposure and offset.
+#
+# Monastery I
+N_days <- 30
+# Simulate a typical month
+lambda_1 <- 1.5
+y_1 <- rpois(N_days, lambda_1)
+# Monastery II
+N_weeks <- 4
+lambda_2 <- 0.5
+y_2 <- rpois(N_weeks, lambda_2 * 7)
+
+# Data set
+#
+y <- c(y_1, y_2)
+exposure <- c(rep(1,30) , rep(7,4))
+monastery <- c(rep(0,30) , rep(1,4))
+d <- data.frame(y = y, days=exposure, monastery=monastery)
+
+# Reduction
+#
+dat_ls <- list(N=nrow(d), y=y, t=exposure, M=monastery)
+
+# Fit
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_9.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$summary()
+
+# Posterior
+#
+post <- fit$draws(format="matrix")
+
+# Dont use the offset for predictions, because the thetas are already on the
+# daily scale!
+lambda_old = exp(post[,"alpha"])
+colMeans(lambda_old)
+# 1.510594 
+lambda_new = exp(post[,"alpha"] + post[,"beta_M"])
+colMeans(lambda_new)
+# 1.047983 
+
+lambda_diff <- lambda_old - lambda_new 
+(lambda_diff_mu <- colMeans(lambda_diff))
+# 0.3958329 
+(lambda_diff_HPDI <- apply(lambda_diff, 2, rethinking::HPDI))
+
+
+
