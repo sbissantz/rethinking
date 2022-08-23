@@ -1323,5 +1323,62 @@ lambda_diff <- lambda_old - lambda_new
 # 0.3958329 
 (lambda_diff_HPDI <- apply(lambda_diff, 2, rethinking::HPDI))
 
+#
+#
+# Multinomial and categorical models
+#
+#
+
+#
+# I. Predictor matched to outcome
+#
+
+# TODO: Check simulation
+# 
+
+# Simulate data
+# ...careeer choices among 500 individuals
+N <- 5e2
+# Expected income for each career (in K)
+# Import: use small numbers for the simulation, 
+# ...exp(1000) = inf ->  1/inf = NAN
+income_in_K <- c(1,2,5) 
+# Scores of each career
+score <- 0.5 * income_in_K
+# Convert scores to probabilites 
+softmax <- function(k){
+    exp(k)/sum(exp(k))
+}
+(p <- softmax(score))
+# Simulate choice
+# Outcome career holds event type values, not counts
+# Empty vecor of choices for each individual
+career <- rep(NA, N)
+set.seed(34302)
+for (i in 1:N) career[i] <- sample(1:3, size=1, prob=p)
+
+# Data reduction
+#
+dat_ls <- list(N=N, K=3, career=career, income=income_in_K)
+
+# Fit the model
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_10.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$summary()
+
+# Samples
+#
+post <- fit$draws(format="matrix")
+alpha_1 <- colMeans(post[,"alpha[1]"])
+alpha_2 <- colMeans(post[,"alpha[2]"])
+
+
 
 
