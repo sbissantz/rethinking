@@ -1333,18 +1333,15 @@ lambda_diff <- lambda_old - lambda_new
 # I. Predictor matched to outcome
 #
 
-# TODO: Check simulation
-# 
-
 # Simulate data
 # ...careeer choices among 500 individuals
-N <- 5e2
+N <- 500
 # Expected income for each career (in K)
 # Import: use small numbers for the simulation, 
 # ...exp(1000) = inf ->  1/inf = NAN
-income_in_K <- c(1,2,5) 
+income <- c(1,2,5) 
 # Scores of each career
-score <- 0.5 * income_in_K
+score <- 0.5 * income
 # Convert scores to probabilites 
 softmax <- function(k){
     exp(k)/sum(exp(k))
