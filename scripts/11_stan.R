@@ -1356,7 +1356,7 @@ for (i in 1:N) career[i] <- sample(1:3, size=1, prob=p)
 
 # Data reduction
 #
-dat_ls <- list(N=N, K=3, career=career, income=income_in_K)
+dat_ls <- list(N=N, K=3, career=career, career_income=income)
 
 # Fit the model
 #
@@ -1375,6 +1375,11 @@ fit$summary()
 post <- fit$draws(format="matrix")
 alpha_1 <- colMeans(post[,"alpha[1]"])
 alpha_2 <- colMeans(post[,"alpha[2]"])
+softmax(c(alpha_1, alpha_2))
+
+
+
+
 
 
 
