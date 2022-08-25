@@ -14,20 +14,20 @@ parameters {
   vector[sno] gamma;
 }
 transformed parameters {
-  vector[N] p;
+  vector[N] logit_p;
   for( i in 1:N ) {
-    p[i] = alpha[aid[i]] + beta[cid[i]] + gamma[sid[i]];
+    logit_p[i] = alpha[aid[i]] + beta[cid[i]] + gamma[sid[i]];
   }
 }
 model { 
   alpha ~ normal(0,1.5);
   beta ~ normal(0,0.5);
   gamma ~ normal(0,0.5);
-  y ~ bernoulli_logit(p);
+  y ~ bernoulli_logit(logit_p);
 }
 generated quantities { 
   vector[N] log_lik;
   for (n in 1:N) {
-    log_lik[n] = bernoulli_logit_lpmf(y[n] | p[n]);
+    log_lik[n] = bernoulli_logit_lpmf(y[n] | logit_p[n]);
   }
 }

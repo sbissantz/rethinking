@@ -8,9 +8,9 @@ parameters {
   vector[tno] beta;
 }
 transformed parameters {
-  vector[N] p;
+  vector[N] logit_p;
   for( i in 1:N ) {
-    p[i] = alpha[aid[i]] + beta[tid[i]];
+    logit_p[i] = alpha[aid[i]] + beta[tid[i]];
   }
 }
 model { 
@@ -19,11 +19,11 @@ model {
   y ~ bernoulli_logit(p);
 }
 generated quantities { 
-  array[N] int y_tilde = bernoulli_logit_rng(p);
+  array[N] int y_tilde = bernoulli_logit_rng(logit_p);
   vector[ano] alpha_p = inv_logit(alpha);
   vector[tno] beta_p = inv_logit(beta);
   vector[N] log_lik;
   for (n in 1:N) {
-    log_lik[n] = bernoulli_logit_lpmf(y[n] | p[n]);
+    log_lik[n] = bernoulli_logit_lpmf(y[n] | logit_p[n]);
   }
 }

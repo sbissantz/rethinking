@@ -18,16 +18,16 @@ parameters {
   vector<lower=0>[tno] tau;
 }
 transformed parameters {
- vector[N] p_logis;
+ vector[N] p_logit;
  for(i in 1:N) {
-  p_logis[i] = Alpha[G[i],D[i]] + beta_u*u[i];
+  p_logit[i] = Alpha[G[i],D[i]] + beta_u*u[i];
  }
 }
 model {
   // A model
   to_vector(Alpha) ~ normal(0,1);
   beta_u ~ normal(0,1);
-  A ~ bernoulli_logit(p_logis);
+  A ~ bernoulli_logit(p_logit);
   // Test score model
   T3 ~ normal(u, tau[3]);
   T2 ~ normal(u, tau[2]);

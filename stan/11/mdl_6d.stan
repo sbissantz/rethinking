@@ -16,11 +16,11 @@ parameters {
   vector[N] u;
 }
 transformed parameters {
- vector[N] p_logis;
- vector[N] q_logis;
+ vector[N] p_logit;
+ vector[N] q_logit;
  for(i in 1:N) {
-  p_logis[i] = Alpha[G[i],D[i]] + beta[G[i]] * u[i];
-  q_logis[i] = delta[G[i]] + gamma[G[i]] * u[i];
+  p_logit[i] = Alpha[G[i],D[i]] + beta[G[i]] * u[i];
+  q_logit[i] = delta[G[i]] + gamma[G[i]] * u[i];
  }
 }
 model {
@@ -28,6 +28,6 @@ model {
   delta ~ normal(0,1);
   // Because u is unobserved we can't figure out the scale
   u ~ normal(0,1);
-  A ~ bernoulli_logit(p_logis);
-  D2 ~ bernoulli_logit(q_logis);
+  A ~ bernoulli_logit(p_logit);
+  D2 ~ bernoulli_logit(q_logit);
 }

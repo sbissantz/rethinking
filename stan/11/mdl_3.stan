@@ -14,11 +14,10 @@ parameters {
   vector[sno] gamma;
 }
 transformed parameters {
-  vector[N] logis_p;
-  vector[N] p;
+  vector[N] logit_p;
   // Calculate the probability
   for( i in 1:N ) {
-    logis_p[i] = alpha[aid[i]] + beta[cid[i]] + gamma[sid[i]];
+    logit_p[i] = alpha[aid[i]] + beta[cid[i]] + gamma[sid[i]];
   }
   // Trick for binomial_lpmf
   // p = inv_logit(logis_p);
@@ -28,12 +27,12 @@ model {
   alpha ~ normal(0,1.5);
   beta ~ normal(0,0.5);
   gamma ~ normal(0,0.5);
-  y ~ binomial_logit(N, logis_p);
+  y ~ binomial_logit(N, logit_p);
 }
 generated quantities { 
   vector[N] log_lik;
   for (i in 1:N) {
-    log_lik[i] = binomial_lpmf(y[i] | N, p[i]);
+    log_lik[i] = binomial_lpmf(y[i] | N, logit_p[i]);
   }
 }
 

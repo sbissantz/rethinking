@@ -8,21 +8,21 @@ parameters {
   vector[gno] alpha_lo;
 }
 transformed parameters {
-  vector[N] p_logis;
+  vector[N] p_logit;
     for(i in 1:N) {
-      p_logis[i] = alpha_lo[gid[i]];
+      p_logit[i] = alpha_lo[gid[i]];
     }
 }
 model {
   alpha_lo ~ normal(0, 1.5);
-  // Using the binomial_logit() parametrizaition I can stick p_logis
+  // Using the binomial_logit() parametrizaition I can stick p_logit
   // directly into the likelihood function (i.e., not p)... more efficient!
   // A ~ binomial( aid, p );
-  A ~ bernoulli_logit(p_logis);
+  A ~ bernoulli_logit(p_logit);
 }
 generated quantities {
   vector[gno] alpha_p = inv_logit(alpha_lo);
-  vector[N] p = inv_logit(p_logis);
+  vector[N] p = inv_logit(p_logit);
 }
 
 

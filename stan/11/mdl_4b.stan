@@ -9,9 +9,9 @@ parameters {
   vector[gno] alpha_lo;
 }
 transformed parameters {
-  vector[N] p_logis;
+  vector[N] p_logit;
     for(i in 1:N) {
-      p_logis[i] = alpha_lo[gid[i]];
+      p_logit[i] = alpha_lo[gid[i]];
     }
     // Using the binomial_logit() parametrizaition I can stick p_logis
     // directly into the likelihood function. Saves this line of code:
@@ -27,6 +27,6 @@ model {
 }
 generated quantities {
   vector[gno] alpha_p = inv_logit(alpha_lo);
-  vector[N] p = inv_logit(p_logis);
+  vector[N] p = inv_logit(p_logit);
 }
 
