@@ -2,7 +2,7 @@ data {
  int<lower=0> N;
  int<lower=0> K;
  array[N] int career;
- array[K] int career_income;
+ vector[K] career_income;
 }
 parameters {
   vector[K-1] alpha;
@@ -18,7 +18,4 @@ model {
   alpha ~ normal(0,1);
   beta ~ normal(0,0.5);
   career ~ categorical_logit(invsoft_p);
-}
-generated quantities {
-  
 }
