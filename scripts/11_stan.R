@@ -1366,21 +1366,21 @@ mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(dat_ls)
 
 # Diagnostics
-#
+# Note: 1% divergent transitions
 fit$cmdstan_diagnose()
 fit$summary()
 
 # Samples
 #
-post <- fit$draws(format="matrix")
-alpha_1 <- colMeans(post[,"alpha[1]"])
-alpha_2 <- colMeans(post[,"alpha[2]"])
-softmax(c(alpha_1, alpha_2))
-
-
-
-
-
-
-
+(post <- fit$draws(format="matrix"))
+# S3 is the pivot
+s1 <- post[,"alpha[1]"]  +  post[,"beta"] * income[1]
+s2 <- post[,"alpha[2]"]  +  post[,"beta"] * income[2]
+# double the income of 2
+s2_double <- post[,"alpha[2]"]  +  post[,"beta"] * income[2] * 2
+N_samples <- nrow(post)
+p <- sapply(seq(N_samples), function(i) softmax(c(s1[i], s2[i], 0)))
+p_double <- sapply(seq(N_samples), function(i) softmax(c(s1[i], s2_double[i], 0)))
+p_diff <- p_double[2,] - p[2,]
+mean(p_diff)
 
