@@ -153,7 +153,8 @@ par(op)
 # Prior predictive contrasts between treatments
 #
 p <- sapply(1:4, function(k) sigmoid(alpha_lo + beta_lo[,k]))
-plot(density(( abs( p[,1]  - p[,2]) )))
+plot(density(( abs( p[,1]  - p[,2]) )), main="Posterior contrast",
+     xlab ="TX2 - TX1", ylab="Posterior plausibility")
 # Prior predictive difference
 mean( abs( p[,1]  - p[,2]) )
 # [1] 0.09678439
@@ -1467,4 +1468,3 @@ calc_p <- function(x1, x2) {
 }
 (p_admit <- calc_p(post$alpha_1, post$alpha_2))
 mean(p_admit)
-
