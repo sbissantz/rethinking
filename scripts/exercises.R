@@ -1373,3 +1373,48 @@ Sys.sleep(3)
 }
 # Between 1 and 10 is enough for that simple model
 
+# 11M7 ---------------------------------------------------------------------
+
+path <- "~/projects/stanmisc"
+
+library(rethinking)
+data(chimpanzees)
+d <- chimpanzees
+
+# Create a treatment variable
+d$treatment <- 1 + d$prosoc_left + 2*d$condition
+# QUAP 
+#
+q11.4 <- rethinking::quap(
+                          alist(
+                                pulled_left ~ dbinom(1, p), 
+                                logit(p) <- a[actor] + b[treatment], 
+                                # a[actor] ~ dnorm(0, 1.5), 
+                                a[actor] ~ dnorm(0, 10), 
+                                b[treatment] ~ dnorm(0, 0.5)), 
+                          data = d)
+samples <- extract.samples(q11.4)
+# MCMC
+#
+(ano <- length(unique(d$actor)))
+(tno <- length(unique(d$treatment)))
+dat_ls <- list(N=nrow(d), ano=ano, tno=tno, tid=d$treatment, aid=d$actor,
+               y=d$pulled_left)
+file <- file.path(path, "stan", "exercises", "mdl_11M7.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+post <- fit$draws(format="matrix")
+
+## Quadratic approximation
+#plot(density(samples$a[,2]), xlim=c(-10, 40))
+## MCMC approximation
+#lines(density(post[,"alpha[2]"]), col="red")
+
+# Using Rs new pipe operator
+#
+# Quadratic approximation
+samples$a[,2] |> density() |> plot(xlim=c(-10, 40))
+# MCMC approximation
+post[,"alpha[2]"] |> density() |> lines(col="red")
+
+
