@@ -16,7 +16,7 @@ transformed parameters {
 model { 
   alpha ~ normal(0,1.5);
   beta ~ normal(0,0.5);
-  y ~ bernoulli_logit(p);
+  y ~ bernoulli_logit(logit_p);
 }
 generated quantities { 
   array[N] int y_tilde = bernoulli_logit_rng(logit_p);
