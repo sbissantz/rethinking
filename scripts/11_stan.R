@@ -1041,7 +1041,6 @@ mtext("Model correctly detected u, even though prior was uk ~ Normal(0,1)")
 library(rethinking)
 data(Kline)
 d <- Kline
-d
 
 # Data transformation 
 #
