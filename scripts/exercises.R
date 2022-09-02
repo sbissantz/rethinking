@@ -1417,4 +1417,86 @@ samples$a[,2] |> density() |> plot(xlim=c(-10, 40))
 # MCMC approximation
 post[,"alpha[2]"] |> density() |> lines(col="red")
 
+# 11M8 ---------------------------------------------------------------------
 
+library(rethinking)
+data(Kline)
+d <- Kline
+
+# Data transformation 
+#
+# Standardized log population
+P_log <- log(d$population)
+d$P <- (P_log - mean(P_log)) / sd(P_log)
+# Contact rate id
+d$cid <- ifelse(d$contact=="low", 1, 2)
+# Drop Hawaii
+d2 <- d[-10,]
+
+# Reduction
+#
+cno <- length(unique(d$cid))
+dat_ls <- with(d, list(cno=length(unique(cid)), N=nrow(d), T = total_tools,
+                       C=cid, P=P))
+dat_ls2 <- with(d2, list(cno=length(unique(cid)), N=nrow(d2), T = total_tools,
+                        C=cid, P=P))
+# Fit
+#
+file <- file.path("..", "stan", "exercises", "mdl_11M8.stan" )
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit1 <- mdl$sample(data=dat_ls)
+fit2 <- mdl$sample(data=dat_ls2)
+
+# Samples 
+#
+post1 <- fit1$draws(c("alpha", "beta_P"), format="matrix")
+post2 <- fit2$draws(c("alpha", "beta_P"), format="matrix")
+log_lambda1 <- fit1$draws("log_lambda", format="matrix")
+log_lambda2 <- fit2$draws("log_lambda", format="matrix")
+LL1 <- fit1$draws("log_lik") 
+LL2 <- fit2$draws("log_lik") 
+
+# Visualize
+#
+r_eff1 <- loo::relative_eff(exp(LL1))
+r_eff2 <- loo::relative_eff(exp(LL2))
+psis1 <- loo::loo(LL1, r_eff=r_eff1, is_method="psis")
+psis2 <- loo::loo(LL2, r_eff=r_eff2, is_method="psis")
+pareto_k1 <- psis1$diagnostics$pareto_k
+pareto_k2 <- psis2$diagnostics$pareto_k
+
+par(mfrow=c(1,2))
+
+N_rep <- nrow(post1)
+plot(NULL, xlim=range(d$P)+c(-1,.5), ylim=range(d$total_tools) + c(-5,5),
+     pch=20, cex=5*pareto_k1, ylab="total tools", xlab="log population (std)")
+for(i in 1:100) {
+# high contact
+curve( exp(post1[[i,"alpha[2]"]] + post1[[i,"beta_P[2]"]] * x), 
+      from=-3, to=3, col=scales::alpha("cadetblue3", .2), add=TRUE)
+curve( exp(post1[[i,"alpha[1]"]] + post1[[i,"beta_P[1]"]] * x), 
+      from=-3, to=3, col=scales::alpha("steelblue", .2), add=TRUE)
+}
+curve( exp(mean(post1[[i,"alpha[2]"]]) + mean(post1[[i,"beta_P[2]"]]) * x), 
+      from=-3, to=3, col="cadetblue3", add=TRUE, lwd=4)
+curve( exp(mean(post1[[i,"alpha[1]"]]) + mean(post1[[i,"beta_P[1]"]]) * x), 
+      from=-3, to=3, col="steelblue", add=TRUE, lwd=4)
+points(d$P, d$total_tools,  pch=20, cex=5*pareto_k1, col="black")
+text(d$P+0.1, d$total_tools+3, as.character(d$culture))
+
+N_rep <- nrow(post2)
+plot(NULL, xlim=range(d2$P)+c(-1,.5), ylim=range(d2$total_tools) + c(-5,5),
+     pch=20, cex=5*pareto_k2, ylab="total tools", xlab="log population (std)")
+for(i in 1:100) {
+# high contact
+curve( exp(post2[[i,"alpha[2]"]] + post2[[i,"beta_P[2]"]] * x), 
+      from=-3, to=3, col=scales::alpha("cadetblue3", .2), add=TRUE)
+curve( exp(post2[[i,"alpha[1]"]] + post2[[i,"beta_P[1]"]] * x), 
+      from=-3, to=3, col=scales::alpha("steelblue", .2), add=TRUE)
+}
+curve( exp(mean(post2[[i,"alpha[2]"]]) + mean(post2[[i,"beta_P[2]"]]) * x), 
+      from=-3, to=3, col="cadetblue3", add=TRUE, lwd=4)
+curve( exp(mean(post2[[i,"alpha[1]"]]) + mean(post2[[i,"beta_P[1]"]]) * x), 
+      from=-3, to=3, col="steelblue", add=TRUE, lwd=4)
+points(d2$P, d2$total_tools,  pch=20, cex=5*pareto_k2, col="black")
+text(d2$P+0.1, d2$total_tools+3, as.character(d2$culture))
