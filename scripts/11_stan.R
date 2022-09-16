@@ -1467,3 +1467,69 @@ calc_p <- function(x1, x2) {
 }
 (p_admit <- calc_p(post$alpha_1, post$alpha_2))
 mean(p_admit)
+
+#
+# Survival analysis
+#
+library(rethinking)
+data(AustinCats)
+d <- AustinCats
+
+# Goal: Adoption rates between black & non-blakc cats
+# H: Black cats are adopted at lower rates 
+#
+# Crux: Pr(Adopted) + Censoring-Pr(!Adopted)
+# Pr of being adopted in time interval x ("normal probability")
+# + Pr of waiting time span x and not being adopted! ("censoring probability")
+
+# Model sketch
+#
+# D_i = 1 ~ Exponential(lambda_i)
+# D_i = 0 ~ Exponential-CCDF(lambda_i)
+# lamdbda_i = 1/mu_i
+# mu_i = alpha_CID[i]
+
+# Data list 
+#
+CID <- ifelse(d$color=="Black", 1, 2)
+A <- ifelse(d$out_event=="Adotion", 1, 0)
+dat_ls <- list("N"=nrow(d), "cno"=length(unique(CID)), "D"=d$days_to_event,
+
+# Fit with ulam
+#
+m11.14 <- ulam(alist(
+               D|A==1 ~ exponential(lambda),
+               D|A==0 ~ custom(exponential_lccdf(!Y | lambda)),
+               lambda <- 1.0/mu,
+               log(mu) <- a[CID],
+               a[CID] ~ normal(0,1)
+), data=dat_ls, chains=4, cores=4)
+stancode(m11.14)
+
+# Fit with Stan
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_13a.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$summary()
+
+# TODO: Make the Stan user guide version of the model
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
