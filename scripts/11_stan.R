@@ -1492,7 +1492,7 @@ d <- AustinCats
 # Data list 
 #
 CID <- ifelse(d$color=="Black", 1, 2)
-A <- ifelse(d$out_event=="Adotion", 1, 0)
+A <- ifelse(d$out_event=="Adoption", 1, 0)
 dat_ls <- list("N"=nrow(d), "cno"=length(unique(CID)), "D"=d$days_to_event,
 
 # Fit with ulam
@@ -1518,14 +1518,32 @@ fit <- mdl$sample(dat=dat_ls)
 fit$cmdstan_diagnose()
 fit$summary()
 
-# TODO: Make the Stan user guide version of the model
+# Stan user guide version of the model
+# integrating out the censored values
 #
+CID <- ifelse(d$color=="Black", 1, 2)
+CID_obs <- CID[A==1]
+A <- ifelse(d$out_event=="Adoption", 1, 0)
+N_obs <- length(d$days_to_event[A==1])
+N_cens <- nrow(d) - N_obs
+D_obs <- d$days_to_event[A==1]
+cno <- length(unique(CID))
+U <- max(D_obs)
+dat_ls <- list("N_obs"=N_obs, "N_cens"=N_cens, "cno"=cno, "U"=U, "D_obs"=D_obs,
+               "CID_obs" = CID_obs)
+
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_13b.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(dat=dat_ls)
+
+fit$cmdstan_diagnose()
+
+fit$print()
 
 
-
-
-
-
+# Stan parallelization, multithreading, etc add to README
+# https://mc-stan.org/docs/cmdstan-guide/parallelization.html
 
 
 
