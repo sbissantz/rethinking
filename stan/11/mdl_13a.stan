@@ -26,3 +26,4 @@ model{
     for ( i in 1:N )
         if ( A[i] == 1 ) D[i] ~ exponential( lambda[i] );
 }
+
