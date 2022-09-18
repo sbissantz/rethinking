@@ -1494,6 +1494,8 @@ d <- AustinCats
 CID <- ifelse(d$color=="Black", 1, 2)
 A <- ifelse(d$out_event=="Adoption", 1, 0)
 dat_ls <- list("N"=nrow(d), "cno"=length(unique(CID)), "D"=d$days_to_event,
+               "A"=A, "CID"= CID)
+
 
 # Fit with ulam
 #
@@ -1523,7 +1525,7 @@ fit$summary()
 #
 CID <- ifelse(d$color=="Black", 1, 2)
 CID_obs <- CID[A==1]
-A <- ifelse(d$out_event=="Adoption", 1, 0)
+ <- ifelse(d$out_event=="Adoption", 1, 0)
 N_obs <- length(d$days_to_event[A==1])
 N_cens <- nrow(d) - N_obs
 D_obs <- d$days_to_event[A==1]
@@ -1532,18 +1534,22 @@ U <- max(D_obs)
 dat_ls <- list("N_obs"=N_obs, "N_cens"=N_cens, "cno"=cno, "U"=U, "D_obs"=D_obs,
                "CID_obs" = CID_obs)
 
+# Fit the model
+#
 path <- "~/projects/stanmisc"
 file <- file.path(path, "stan", "11", "mdl_13b.stan") 
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(dat=dat_ls)
 
+# Check the model
+#
 fit$cmdstan_diagnose()
-
 fit$print()
 
+# Note: did receive different values!
+# If you should ever do a survival analysis, make sure, you understand the
+# deviations before making inferences from your models.
 
-# Stan parallelization, multithreading, etc add to README
-# https://mc-stan.org/docs/cmdstan-guide/parallelization.html
 
 
 
