@@ -34,6 +34,10 @@ they'll release a new version of the book before I need to buy it.
 - https://elevanth.org/blog/
 – https://vasishth.github.io/bayescogsci/book/
 
+Note: Long run times? Read:
+https://mc-stan.org/docs/stan-users-guide/parallelization.html and think about
+switching to pure cmdstan. See: https://github.com/rmcelreath/cmdstan_map_rect_tutorial
+
 ---
 
 [^1]: https://github.com/rmcelreath/rethinking
