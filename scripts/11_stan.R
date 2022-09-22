@@ -1580,7 +1580,8 @@ plot(table(y), xlab="manuscripts completed")
 # PPS
 #
 # inv_logit: logistic function
-alpha_p <- plogis(alpha)
+logit_alpha <- rnorm(N, -1 , 0.5 );
+alpha_p <- plogis(logit_alpha)
 hist(alpha_p, main="Average probability of drinking")
 mtext(paste0("mean= ", round(mean(alpha_p), digits=2)))
 
@@ -1615,12 +1616,32 @@ file <- file.path(path, "stan", "11", "mdl_14.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(data=dat_ls)
 print(fit)
+#    variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
+#  a_p          -1.27   -1.22 0.37 0.32   -1.95   -0.77 1.00     1215     1010
+#  a_l           0.01    0.01 0.09 0.09   -0.14    0.16 1.00      970     1136
+plogis(-1.27)
+# [1] 0.2192573
+exp(0.01)
+# [1] 1.01005
 
-# Stan (more readable)
+# Stan (more direct version)
+# 
 path <- "~/projects/stanmisc"
 file <- file.path(path, "stan", "11", "mdl_14b.stan") 
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(data=dat_ls)
 print(fit)
+#  variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
+#    p         0.23    0.23 0.06 0.06    0.13    0.32 1.00     1299     1438
+#    lambda    1.00    1.00 0.09 0.09    0.86    1.16 1.00     1209     1547
 
-
+# Stan (more direct & faster version from the Stan User Guide)
+# 
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "11", "mdl_14c.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+print(fit)
+#  variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
+#    p         0.23    0.23 0.06 0.06    0.13    0.32 1.00     1574     1628
+#    lambda    0.99    0.99 0.09 0.09    0.85    1.15 1.00     1442     2032
