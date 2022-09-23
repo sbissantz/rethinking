@@ -1645,3 +1645,14 @@ print(fit)
 #  variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
 #    p         0.23    0.23 0.06 0.06    0.13    0.32 1.00     1574     1628
 #    lambda    0.99    0.99 0.09 0.09    0.85    1.15 1.00     1442     2032
+
+
+
+
+
+
+
+
+
+
+
