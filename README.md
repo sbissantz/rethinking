@@ -32,7 +32,7 @@ they'll release a new version of the book before I need to buy it.
 - https://statmodeling.stat.columbia.edu/
 - https://avehtari.github.io/modelselection/
 - https://elevanth.org/blog/
-– https://vasishth.github.io/bayescogsci/book/
+- https://vasishth.github.io/bayescogsci/book/
 
 Note: Long run times? Read:
 https://mc-stan.org/docs/stan-users-guide/parallelization.html and think about
