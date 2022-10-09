@@ -23,4 +23,7 @@ model{
     a ~ normal(0 , 1.5);
     A ~ beta_binomial(N_bern , phi*kappa , (1-phi)*kappa);
 }
-
+generated quantities {
+    array[N] int A_tilde;
+    A_tilde = beta_binomial_rng(N_bern, phi*kappa , (1-phi)*kappa);
+}
