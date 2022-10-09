@@ -586,7 +586,7 @@ y1_mu <- p_mu[x1] ; y2_mu <- p_mu[x2]
 for(i in 1:x_max) {
   lines(c(x1[i], x2[i]), c(y1_mu[i], y2_mu[i]))
 }
-# For a simlle three-point summary a one-liner is enough
+# For a simple three-point summary a one-liner is enough
 #points(rep(i,3), c(p_HPDI[1,i], p_mu[i], p_HPDI[2,i]), type="b", lwd=2, cex=.3, pch=20) 
 
 #
