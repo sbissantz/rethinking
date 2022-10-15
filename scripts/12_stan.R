@@ -2,6 +2,10 @@
 # Ch.12: Monsters and Mixtures
 #
 library(rethinking)
+
+# Beta-Binomial
+#
+
 #
 # Data
 #
@@ -107,4 +111,73 @@ for(i in 1:12) {
       hpdi <- rethinking::HPDI(A_tilde[,i]/dat_ls$N_bern[i])
       lines(rep(i, 2) , c(hpdi[1], hpdi[2]), lty=2)
 }
+
+# Gamma-Poisson 
+# 
+library(rethinking)
+data(Kline)
+d <- Kline
+
+# Data transformation 
+#
+# Standardized log population
+P_log <- log(d$population)
+d$P <- (P_log - mean(P_log)) / sd(P_log)
+# d$P <- scale(log(d$population))
+# Contact rate id
+d$cid <- ifelse(d$contact=="low", 1, 2)
+
+# Reduction
+#
+N <- nrow(d)
+cno <- length(unique(d$cid))
+dat_ls <- list("cno"=cno, "N"=N, "T"=d$total_tools, "C"=d$cid,
+               "P"=d$population)
+
+# Fit
+#
+file <- file.path("..", "stan", "12", "2.stan" )
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
+
+# Samples
+#
+post <- fit$draws(format="matrix")
+LL <- fit$draws("log_lik")
+
+# Pareto_k
+#
+r_eff <- loo::relative_eff(exp(LL))
+psis <- loo::loo(LL, r_eff=r_eff, is_method="psis")
+pareto_k <- psis$diagnostics$pareto_k
+
+# Visualize
+#
+N_rep <- nrow(post)
+x_lim <- range(d$population) + c(-1e3, 5e4)
+y_lim <- range(d$total_tools) + c(-10,10)
+cex <- 5*pareto_k ; 
+pch <- ifelse(d$cid==1,21, 20)
+plot(NULL, xlim=x_lim, ylim=y_lim, ylab="total tools", xlab="population")
+for(i in 1:100) {
+# high contact
+curve((post[i,"alpha[2]"]*x^post[i,"beta[2]"])/post[i, "gamma"],
+      from=x_lim[1], to=x_lim[2], col=scales::alpha("cadetblue3", .2), add=TRUE)
+# low contact
+curve((post[i,"alpha[1]"]*x^post[i,"beta[1]"])/post[i, "gamma"],
+      from=x_lim[1], to=x_lim[2], col=scales::alpha("steelblue", .2), add=TRUE)
+}
+# high contact
+curve((mean(post[i,"alpha[2]"])*x^mean(post[i,"beta[2]"]))/mean(post[i, "gamma"]),
+      from=x_lim[1], to=x_lim[2], col="cadetblue3", add=TRUE, lwd=4)
+# low contact
+curve((mean(post[i,"alpha[1]"])*x^mean(post[i,"beta[1]"]))/mean(post[i, "gamma"]),
+      from=x_lim[1], to=x_lim[2], col="steelblue", add=TRUE, lwd=4)
+points(d$population, d$total_tools,  pch=pch, cex=cex, col="black")
+text(d$population+3e4, d$total_tools, as.character(d$culture))
 
