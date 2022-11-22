@@ -280,9 +280,16 @@ print(fit)
 #
 # Ordered categorical outcomes
 #
+
+# 12.3.1 – Example: Moral intuitions
+#
+
 library(rethinking)
 data(Trolley)
 d <- Trolley
+
+# 12.3.2 – Describing and ordered distribution with intercepts
+#
 
 # Visualize
 #
@@ -295,15 +302,68 @@ pr_k <- table(d$response) / nrow(d)
 # Cumulative proportions
 cum_pr_k <- cumsum(pr_k)
 # Visualize
-plot(1:7, cum_pr_k, type="b", ylim=c(0,1), ylab="cumulative proportion")
+plot(1:7, cum_pr_k, type="b", ylim=c(0,1), xlab="response", ylab="cumulative
+     proportion")
 # logit (inverse logistic)
 lco <- qlogis(cum_pr_k)
 N_lco <- length(lco)
 plot(1:7, lco, xlab="response", ylab="log-cumulative-odds", type="b")
 
+# Data reduction
+#
+N <- nrow(d) 
+zero <- rep(0, length=N) 
+one <- rep(1, length=N) 
+K <- d$response |> unique() |> length()
+dat_ls <- list("N" = N, "K" = K, "R" = d$response, "zero" = zero, "one" = one)
+
+# Fit the models
+path <- "~/projects/stanmisc/stan"
+file <- file.path(path, "12", "mdl_4a.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+path <- "~/projects/stanmisc/stan"
+file <- file.path(path, "12", "mdl_4b.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+print(fit)
+
+# Samples
+#
+post <- fit$draws(format="matrix")
+c_mean <- colMeans(post[,-1])
+plogis(c_mean)
+
+# 12.3.3 Adding predictor variables
+#
+pk <- rethinking::dordlogit(1:7, 0, c_mean)
+sum(pk*(1:7))
+pk_ast <-  rethinking::dordlogit(1:7, 0, c_mean-0.5)
+sum(pk_ast*(1:7))
+
+# Data reduction
+#
+dat_ls <- list("N"=N, "K"=K, "R"=d$response, "I"=d$intention, "A"=d$action,
+               "C"=d$contact) 
+
+#
+# Model does not work
+#
+
+# Fit the model
+#
+path <- "~/projects/stanmisc/stan"
+file <- file.path(path, "12", "mdl_5.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+print(fit)
 
 
-
-
+# Prior predictive simulation?
 
 
