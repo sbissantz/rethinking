@@ -2,6 +2,7 @@ data {
   int<lower=0> N;
   int<lower=0> K;
   array[N] int<lower=1, upper=K> R;
+  vector[N] zero;
 }
 
 parameters{
