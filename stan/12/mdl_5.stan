@@ -18,7 +18,6 @@ parameters {
 
 transformed parameters {
   vector[N] eta;
-  vector[N] Beta_I;
   eta = beta_A*A + beta_C*C + beta_I * I + beta_IA*(I.*A) + beta_IC*(I.*C);
 }
 
