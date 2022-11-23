@@ -348,22 +348,55 @@ sum(pk_ast*(1:7))
 
 # Data reduction
 #
+K <- d$response |> unique() |> length()
 dat_ls <- list("N"=N, "K"=K, "R"=d$response, "I"=d$intention, "A"=d$action,
                "C"=d$contact) 
-
-#
-# Model does not work
-#
 
 # Fit the model
 #
 path <- "~/projects/stanmisc/stan"
 file <- file.path(path, "12", "mdl_5.stan") 
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(data=dat_ls)
-print(fit)
+fit <- mdl$sample(data=dat_ls, parallel_chains=4)
 
+# Dianostics
+#
+fit$cmdstan_diagnose()
+fit$cmdstan_summary()
 
+# Posterior
+#
+post <- fit$draws(format="data.frame")
+cutpoint <- fit$draws("c", format="data.frame")
+colnames(post)
 # Prior predictive simulation?
+calc_eta <- function(A,C,I,post){
+     with(post,beta_A*A + beta_C*C + beta_I*I + beta_IA*(I*A) +
+          beta_IC*(I*C))
+}
+N_samples <- nrow(post)
+eta_I01 <- vapply(0:1, calc_eta, FUN.VALUE=numeric(N_samples), 
+                  A=0, C=0, post=post)
+
+# Rethinking solution
+theta_cum <- array(NA, dim=c(2,6,50) )
+for(s in 1:50) {
+      Sys.sleep(1)
+       pordlogit(1:6, eta_I01[s,], cutpoints[s,])
+}
+
+# Hand-made
+theta_cum <- array(NA, dim=c(2,6,50) )
+for(s in 1:50) {
+      for(c in 1:6) {
+            for(i in 1:2) {
+                  theta_cum[i,c,s] <- plogis(cutpoint[[c]][s] - eta_I01[,i][s])
+            }
+      }
+}
+
+# Visualize the array
+#
+
 
 
