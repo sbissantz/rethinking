@@ -348,6 +348,7 @@ sum(pk_ast*(1:7))
 
 # Data reduction
 #
+N <- nrow(d) 
 K <- d$response |> unique() |> length()
 dat_ls <- list("N"=N, "K"=K, "R"=d$response, "I"=d$intention, "A"=d$action,
                "C"=d$contact) 
@@ -376,13 +377,12 @@ calc_eta <- function(A,C,I,post){
 }
 N_samples <- nrow(post)
 eta_I01 <- vapply(0:1, calc_eta, FUN.VALUE=numeric(N_samples), 
-                  A=0, C=0, post=post)
+                  A=1, C=0, post=post)
 
 # Rethinking solution
 theta_cum <- array(NA, dim=c(2,6,50) )
 for(s in 1:50) {
-      Sys.sleep(1)
-       pordlogit(1:6, eta_I01[s,], cutpoints[s,])
+       pordlogit(1:6, eta_I01[s,], cutpoint[s,])
 }
 
 # Hand-made
@@ -395,7 +395,57 @@ for(s in 1:50) {
       }
 }
 
-# Visualize the array
+# Visualize the distribution of posterior probabilities 
+#
+# Action: 0, 
+plot(NULL, xlim=c(0,1), ylim=c(0,1), xlab="intention", ylab="probability",
+     # Change the spacing of the x axis without creating a new axis
+     xaxp=c(0,1,1), yaxp=c(0,1,2))
+for (s in 1:50) {
+      for (i in 1:6) {
+            lines(x = 0:1, theta_cum[,i,s], col=grau(0.1)) 
+      }
+}
+
+# Visualize the implied Frequencies
+#
+N_samples <- nrow(post)
+eta_I01 <- vapply(0:1, calc_eta, FUN.VALUE=numeric(N_samples), 
+                  A=1, C=0, post=post)
+
+# Create an dordlogit function
+#
+# To build the code yourself, see:
+rethinking::dordlogit
+rethinking::rordlogit
+
+# Simulate 
+#
+# For the code see: rethinking or
+calc_eta <- function(A,C,I,post){
+     with(post,beta_A*A + beta_C*C + beta_I*I + beta_IA*(I*A) +
+          beta_IC*(I*C))
+}
+eta_I01 <- vapply(0:1, calc_eta, FUN.VALUE=numeric(N_samples), 
+                  A=1, C=0, post=post)
+
+sim_R <- function(N, eta, c) {
+      rethinking::rordlogit(N, phi=eta, a=as.matrix(c))
+}
+
+Rhat_I0 <- rordlogit(1e4, eta_I01[,1], colMeans(cutpoint)[1:6])
+Rhat_I1 <- rordlogit(1e4, eta_I01[,2], colMeans(cutpoint)[1:6])
+
+# Action=1, Contact=0
+simplehist(cbind(Rhat_I0,Rhat_I1))
+legend("topright", legend=c("Intention=0", "Intention=1"),
+       col=c("black", "blue"), lty=1, lwd=2, cex=0.8)
+
+#
+# Import: When I somulate the data with dordlogit, I use the colMeans.
+# But to incoporate uncertainty more acurately, we should actually do
+# overlays for the implied histograms (N=1e3) and see which lines shines
+# through.
 #
 
 
