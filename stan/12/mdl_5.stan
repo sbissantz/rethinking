@@ -30,3 +30,12 @@ model {
   c ~ normal(0, 1.5);
   R ~ ordered_logistic(eta, c);
 }
+
+//generated quantities {
+  //vector[N] R_hat; 
+  //R_hat_A0C1I0 ~ ordered_logistic_rng(beta_A*0 + beta_C*1 + beta_I * 0 + beta_IA*(0.*0) +
+  //beta_IC*(0.*1), c);
+  //R_hat_A0C1I1 ~ ordered_logistic_rng(beta_A*0 + beta_C*1 + beta_I * 1 + beta_IA*(1.*0) +
+  //beta_IC*(1.*1), c);
+//}
+
