@@ -483,19 +483,6 @@ K <- d$response |> unique() |> length()
 dat_ls <- list("N"=N, "R"=d$response, "A"=d$action, "I"=d$intention,
                "C"=d$contact, "E"=as.integer(d$edu_new), "K"=K, "alpha"=alpha)
 
-dat <- list("R"=d$response, "A"=d$action, "I"=d$intention, "C"=d$contact,
-            "E"=as.integer(d$edu_new), "alpha"=alpha)
-m12.6_ulam <- ulam(
-                   alist(
-                         R ~ ordered_logistic(phi, kappa),
-                         phi <- bE*sum(delta_j[1:E]) + bA*A + bI*I + bC*C,
-                         kappa ~ normal(0,1),
-                         c(bA,bI,bC,bE) ~ normal(0,1),
-                         vector[8]:delta_j <<-append_row(0, delta),
-                         simplex[7]:delta ~ dirichlet(alpha)
-                   ), data=dat, chains=4, cores=4
-)
-
 # Fit the model
 #
 path <- "~/projects/stanmisc/stan"
@@ -507,4 +494,37 @@ fit <- mdl$sample(data=dat_ls, parallel_chains=4)
 #
 fit$cmdstan_diagnose()
 fit$print()
+
+# Posterior distribution
+#
+post <- fit$draws(format="df")
+delta <- fit$draws("delta", format="matrix")
+delta_labels <- c("Elem","MidSch","SHS","HSG","SCol","Bach","Mast","Grad")
+
+lower.panel <- function(x, y){
+      par(usr = c(0, 1, 0, 1))
+      r <- round(cor(x, y), digits=2)
+      txt <- paste0(r)
+      cex.cor <- 0.6/strwidth(txt)
+      text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+upper.panel<-function(x, y){
+      points(x,y, pch = 20, cex=.2)
+}
+diag.panel <-function(x){
+      par(usr = c(0, 1, 0, 10))
+      dx <- density(x) 
+      lines(dx)
+
+}
+pairs(delta, labels=delta_labels, upper.panel=upper.panel, lower.panel =
+      lower.panel, diag.panel=diag.panel, cex.labels=.9) 
+
+# Note: The scaling of diag.panel is not optimal. You have to adapt the size
+# individually. I have no time to dive depper into this. But if you need such
+# a graphic you can start from here.
+#
+
+
+
 
