@@ -321,12 +321,12 @@ dat_ls <- list("N" = N, "K" = K, "R" = d$response, "zero" = zero, "one" = one)
 path <- "~/projects/stanmisc/stan"
 file <- file.path(path, "12", "mdl_4a.stan") 
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(data=dat_ls)
+fit <- mdl$sample(data=dat_ls, parallel_chains=4)
 
 path <- "~/projects/stanmisc/stan"
 file <- file.path(path, "12", "mdl_4b.stan") 
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit <- mdl$sample(data=dat_ls)
+fit <- mdl$sample(data=dat_ls, parallel_chains=4)
 
 # Diagnostics
 #
@@ -448,5 +448,63 @@ legend("topright", legend=c("Intention=0", "Intention=1"),
 # through.
 #
 
+#
+# 12.4 Ordered categorical predictor
+#
 
+library(rethinking)
+data(Trolley)
+d <- Trolley
+
+# Data wrangling
+#
+levels(d$edu)
+edu_levels <- c(6,1,8,4,7,2,5,3) 
+d$edu_new <- edu_levels[ d$edu ]
+
+# Prior implications
+#
+library(gtools)
+N_vec <- 10
+alpha <- rep(2,7)
+delta <- rdirichlet(N_vec,alpha)
+# Note: not that hart to implement
+rdirichlet
+
+# Visualize prior implications
+#
+plot(NULL, xlim=c(1,7), ylim=c(0,0.5), xlab="index", ylab="probability")
+for( i in 1:nrow(delta) ) lines(1:7, delta[i,], type="b")
+
+# Reduction
+#
+N <- nrow(d)
+K <- d$response |> unique() |> length()
+dat_ls <- list("N"=N, "R"=d$response, "A"=d$action, "I"=d$intention,
+               "C"=d$contact, "E"=as.integer(d$edu_new), "K"=K, "alpha"=alpha)
+
+dat <- list("R"=d$response, "A"=d$action, "I"=d$intention, "C"=d$contact,
+            "E"=as.integer(d$edu_new), "alpha"=alpha)
+m12.6_ulam <- ulam(
+                   alist(
+                         R ~ ordered_logistic(phi, kappa),
+                         phi <- bE*sum(delta_j[1:E]) + bA*A + bI*I + bC*C,
+                         kappa ~ normal(0,1),
+                         c(bA,bI,bC,bE) ~ normal(0,1),
+                         vector[8]:delta_j <<-append_row(0, delta),
+                         simplex[7]:delta ~ dirichlet(alpha)
+                   ), data=dat, chains=4, cores=4
+)
+
+# Fit the model
+#
+path <- "~/projects/stanmisc/stan"
+file <- file.path(path, "12", "mdl_6.stan") 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls, parallel_chains=4)
+
+# Diagnostics
+#
+fit$cmdstan_diagnose()
+fit$print()
 
