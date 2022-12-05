@@ -364,6 +364,7 @@ fit <- mdl$sample(data=dat_ls, parallel_chains=4)
 #
 fit$cmdstan_diagnose()
 fit$cmdstan_summary()
+fit$print()
 
 # Posterior
 #
