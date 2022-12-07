@@ -336,8 +336,13 @@ print(fit)
 # Samples
 #
 post <- fit$draws(format="matrix")
+# Cumulative log-odds
 c_mean <- colMeans(post[,-1])
-plogis(c_mean)
+# Cumulative probabilities 
+theta_mean <- plogis(c_mean)
+# Probability
+theta_mean[2] - theta_mean[1]
+plogis(c_mean[2]) - plogis(c_mean[1])
 
 # 12.3.3 Adding predictor variables
 #
@@ -525,7 +530,4 @@ pairs(delta, labels=delta_labels, upper.panel=upper.panel, lower.panel =
 # individually. I have no time to dive depper into this. But if you need such
 # a graphic you can start from here.
 #
-
-
-
 
