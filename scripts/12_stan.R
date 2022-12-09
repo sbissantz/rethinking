@@ -531,3 +531,89 @@ pairs(delta, labels=delta_labels, upper.panel=upper.panel, lower.panel =
 # a graphic you can start from here.
 #
 
+#
+# Additionals from the Video lectures
+#
+
+# Trolley data
+#
+# Load the required package(s)
+library(rethinking)
+# Load the internal data set
+data(Trolley)
+# Shorten the name 
+d <- Trolley
+# Get the number of unique responses
+N <- nrow(d) 
+# Get the number of response categories (e.g., 7-point Likert scale) 
+K <- max(d$response)
+# Build a reduded list of the data frame 
+dat_ls <- list("N"=N, 
+               "K"=K,
+               "R"=d$response,
+               "I"=d$intention, 
+               "A"=d$action,
+               "C"=d$contact) 
+
+# Fit the model
+#
+# Get the path were the stan files live 
+path <- "~/projects/stanmisc/stan"
+# Select the target model 
+file <- file.path(path, "12", "mdl_5.stan") 
+# Compile the model 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+# Run the NUTS algorithm 
+fit <- mdl$sample(data=dat_ls, parallel_chains=4)
+
+# Dianostics
+#
+# Assess the Rhat values
+fit$print()
+# Assess anything else 
+fit$cmdstan_diagnose()
+# Produce an rstan object
+stanfit <- rstan::read_stan_csv(fit$output_files())
+# Produce a trankplot for beta_I
+rethinking::trankplot(stanfit, pars="beta_I")
+# Produce a traceplot for beta_I
+# rstan::traceplot(stanfit, pars=c("beta_I"))
+
+# Posterior
+#
+# Extract samples from the posterior
+posterior <- fit$draws(format="data.frame")
+cutpoint <- fit$draws("c", format="matrix")
+# Include only relevant parameters
+cond <- grepl("beta|c", colnames(posterior))
+post <- posterior[,cond]
+# Get the number of samples
+N_samples <- nrow(post)
+
+# Posterior predictions 
+#
+# Posterior mean predictions
+sim <- function(N, A, C, I) {
+      # Empty vector for posterior line predictions
+      eta <- vector(length=N_samples)
+      # Empty vector for posterior predictions 
+      R_hat <- vector(length=N_samples)
+      # Note: Inefficient but readable for loop  
+      # For each sample of the posterior...
+      for(s in 1:N_samples) {
+            # Build the vector of posterior line predictions
+            eta[s] <- with(post,beta_A[s]*A+beta_C[s]*C+beta_I[s]*I)
+            # Build the vector of posterior predictions
+            R_hat[s] <- rordlogit(n=N, 
+                                  phi = eta[s] , 
+                                  a = cutpoint[s,1:6])
+      }
+      R_hat
+}
+#  
+R_hat <- sim(N=1e4, A=0, I=0, C=0)
+hist(R_hat)
+# Necessary?
+R_hat_avg <- mcreplicate(1e2, sim(N=1e2, A=0, C=0, I=0), mc.cores=4)
+simplehist(as.vector(R_hat_avg))
+
