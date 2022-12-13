@@ -617,3 +617,106 @@ hist(R_hat)
 R_hat_avg <- mcreplicate(1e2, sim(N=1e2, A=0, C=0, I=0), mc.cores=4)
 simplehist(as.vector(R_hat_avg))
 
+# Add gender as cactegorical 
+#
+library(rethinking)
+data(Trolley)
+# Shorten the name 
+d <- Trolley
+# Get the number of unique responses
+N <- nrow(d) 
+# Get the number of response categories (e.g., 7-point Likert scale) 
+K <- max(d$response)
+# Recode Gender as index variable (ladies fist coding)
+d$G <- ifelse(d$male==1, 2, 1) 
+# Get the number of Gender categories
+L <- max(d$G)
+# Build a reduded list of the data frame 
+dat_ls <- list("N"=N, 
+               "K"=K,
+               "L"=L,
+               "R"=d$response,
+               "I"=d$intention, 
+               "A"=d$action,
+               "C"=d$contact,
+               "G"=d$G) 
+
+# Fit the model
+#
+# Get the path were the stan files live 
+path <- "~/projects/stanmisc/stan"
+# Select the target model 
+file <- file.path(path, "12", "mdl_7.stan") 
+# Compile the model 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+# Run the NUTS algorithm 
+fit <- mdl$sample(data=dat_ls, parallel_chains=4)
+
+# Add Education as categorical predictor
+#
+# Note: Modeling sample selectivity. If we have a selected sample, e.g. college
+# students, we must think hardly about their differences from the population.
+# Often student samples with voluntary participation differs in terms of
+# Gender, Age, Education. These variables determine their motivation to
+# participate.
+#
+# Thus your results are already conditioned on the sample! 
+#
+# Including the sampling selection in the dag, model it as follows: 
+# E -> P ; Y -> P  (here: Collider)
+#
+library(rethinking)
+data(Trolley)
+# Shorten the name 
+d <- Trolley
+# Get the number of unique responses
+N <- nrow(d) 
+# Get the number of response categories (e.g., 7-point Likert scale) 
+K <- max(d$response)
+# Recode Gender as index variable (ladies fist coding)
+d$G <- ifelse(d$male==1, 2, 1) 
+# Get the number of Gender categories
+L <- max(d$G)
+# Sort education levels
+edu_levels <- c(6,1,8,4,7,2,5,3) 
+d$edu_new <- edu_levels[ d$edu ]
+# Get the number of education categories
+M <- max(d$edu_new)
+# Alpha vector for the dirichlet distribution
+alpha <- rep(2,7)
+# Build a reduded list of the data frame 
+dat_ls <- list("N"=N, 
+               "K"=K,
+               "L"=L,
+               "M"=M,
+               "alpha"=alpha,
+               "R"=d$response,
+               "I"=d$intention, 
+               "A"=d$action,
+               "C"=d$contact,
+               "G"=d$G,
+               "E"=d$edu_new
+) 
+# Get the path were the stan files live 
+path <- "~/projects/stanmisc/stan"
+# Select the target model 
+file <- file.path(path, "12", "mdl_8.stan") 
+# Compile the model 
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+# Run the NUTS algorithm 
+fit <- mdl$sample(data=dat_ls, parallel_chains=4)
+
+# Diagnostics
+fit$cmdstan_diagnose()
+fit$print(max_rows=30)
+#
+# Samples
+samples <- fit$draws()
+# Posterior (reshaped samples)
+# post <- aperm(samples, perm=c(1,3,2))
+post <- fit$draws(format="matrix")
+
+# Check why alpha does not have a prior in mc elreaths stancode
+#
+
+
