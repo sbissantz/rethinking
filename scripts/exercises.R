@@ -1500,3 +1500,23 @@ curve( exp(mean(post2[[i,"alpha[1]"]]) + mean(post2[[i,"beta_P[1]"]]) * x),
       from=-3, to=3, col="steelblue", add=TRUE, lwd=4)
 points(d2$P, d2$total_tools,  pch=20, cex=5*pareto_k2, col="black")
 text(d2$P+0.1, d2$total_tools+3, as.character(d2$culture))
+
+# 12M1 ---------------------------------------------------------------------
+
+n <- c( 12, 36 , 7 , 41 )
+q <- n / sum(n)
+p <- cumsum(q) 
+qlogis(p)
+
+# 12M2 ---------------------------------------------------------------------
+
+plot( 1:4 , p , xlab="rating" , ylab="cumulative proportion" ,
+    xlim=c(0.7,4.3) , ylim=c(0,1) , xaxt="n" )
+axis( 1 , at=1:4 , labels=1:4 )
+# plot gray cumulative probability lines
+for ( x in 1:4 ) lines( c(x,x) , c(0,p[x]) , col="gray" , lwd=2 )
+# plot blue discrete probability segments
+for ( x in 1:4 )
+    lines( c(x,x)+0.01 , c(p[x]-q[x],p[x]) , col="slateblue" , lwd=2 )
+# add number labels
+text( 1:4+0.2 , p-q/2 , labels=1:4 , col="slateblue" )
