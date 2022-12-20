@@ -654,6 +654,10 @@ fit <- mdl$sample(data=dat_ls, parallel_chains=4)
 
 # Add Education as categorical predictor
 #
+
+# Note: Even in experiments sample selection does matter! So we should bring it
+# in the model.
+#
 # Note: Modeling sample selectivity. If we have a selected sample, e.g. college
 # students, we must think hardly about their differences from the population.
 # Often student samples with voluntary participation differs in terms of
@@ -679,7 +683,7 @@ d$G <- ifelse(d$male==1, 2, 1)
 L <- max(d$G)
 # Sort education levels
 edu_levels <- c(6,1,8,4,7,2,5,3) 
-d$edu_new <- edu_levels[ d$edu ]
+d$edu_new <- edu_levels[d$edu]
 # Get the number of education categories
 M <- max(d$edu_new)
 # Alpha vector for the dirichlet distribution
@@ -715,8 +719,10 @@ samples <- fit$draws()
 # Posterior (reshaped samples)
 # post <- aperm(samples, perm=c(1,3,2))
 post <- fit$draws(format="matrix")
+colnames(post)
 
-# Check why alpha does not have a prior in mc elreaths stancode
 #
-
+# Import: Since the education effect differs by gender, we should also stratify
+# the delta parameters by gender  (this is not done here)
+#
 
