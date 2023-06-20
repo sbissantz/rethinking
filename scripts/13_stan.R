@@ -41,7 +41,30 @@ d$tank <- seq(n_tanks)
 # Data list 
 dat_ls <- list("n_tanks" = n_tanks, "S"=d$surv, "N"=d$density, "T"=d$tank)
 
-# TODO: Prior predictive checks
+# Prior predictive checks
+#
+N <- 1e5
+
+# Prior implications
+#
+# Alpha prior
+# alpha_lo <- rnorm(N, 0, 10) # redicolous!
+# hist(alpha_lo)
+# alpha_lo <- rnorm(N, 0, 1) # maybe too narrow (although plausible)
+# alpha_lo <- rnorm(N, 0, 0.5) # flat! Given the plot below, this is a good
+# choice however to remain consistent with the book, I will use the next one
+alpha_lo <- rnorm(N, 0, 1.5) # flat! 
+alpha_p <- plogis(alpha_lo) 
+hist(alpha_p)
+
+# Visualize
+# logit(pi) = X_i*beta + alpha
+# pi = logit^-1(X_i*beta + alpha) = sigmoid(X_i*beta + alpha)
+plot(c(-4,4), c(0,1), type="n", ylab="Probability of survival",
+     xlab="Predictor values", main="Prior predictive simulation")
+for(i in 1:50) {
+    curve(plogis(alpha_lo[i] * x), from=-4, to=4, add=TRUE)
+}
 
 # Fit the first model (no pooling)
 #
@@ -70,6 +93,29 @@ loo1 <- loo::loo(LL1, r_eff=reff1)
 # PSIS
 psis1 <- loo::loo(LL1, r_eff=reff1, is_method="psis")
 pareto_k1 <- psis1$diagnostics$pareto_k
+
+# Prior implications
+#
+N <- 1e5
+#
+# Alpha prior
+# alpha_lo <- rnorm(N, 0, 10) # redicolous!
+# hist(alpha_lo)
+# alpha_lo <- rnorm(N, 0, 1) # maybe too narrow (although plausible)
+# alpha_lo <- rnorm(N, 0, 0.5) # flat! Given the plot below, this is a good
+# choice however to remain consistent with the book, I will use the next one
+alpha_bar_lo <- rnorm(N, 0, 1.5)
+sigma_lo <- rexp(1)
+alpha_lo <- rnorm(alpha_bar_lo, sigma_lo)  # flat! 
+
+# Prior predictive checks 
+# logit(pi) = X_i*beta + alpha
+# pi = logit^-1(X_i*beta + alpha) = sigmoid(X_i*beta + alpha)
+plot(c(-4,4), c(0,1), type="n", ylab="Probability of survival",
+     xlab="Predictor values", main="Prior predictive simulation")
+for(i in 1:50) {
+    curve(plogis(alpha_lo[i] * x), from=-4, to=4, add=TRUE)
+}
 
 # Fit the second model (partial pooling)
 #
@@ -104,6 +150,5 @@ pareto_k2 <- psis2$diagnostics$pareto_k
 comp <- loo::loo_compare(loo1, loo2)
 print(comp, simplify=FALSE)
 
-
-# TODO: Prior predictive simulation
 # TODO: Posterior predictive checking 
+# TODO: Check if ulam code and cmdstanr code give the same results 
