@@ -18,8 +18,8 @@ transformed parameters{
 // Model Definition
 model{
   sigma ~ exponential(1);
-  alpha_bar ~ normal(alpha, sigma);
-  alpha ~ normal(0, 1.5);
+  alpha ~ normal(alpha_bar, sigma);
+  alpha_bar ~ normal(0, 1.5);
   S ~ binomial_logit(N, p_lo);
 }
 generated quantities{
