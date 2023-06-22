@@ -9,9 +9,9 @@ data{
 parameters{
   vector[n_tanks] alpha; 
 }
-transformed parameters{
-  vector[n_tanks] p_lo;
-  p_lo = alpha[T];
+  for (i in 1:n_tanks) {
+    p_lo[i] = alpha[T[i]];
+  }
 }
 // Model Definition
 model{
