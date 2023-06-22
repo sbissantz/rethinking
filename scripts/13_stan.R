@@ -94,6 +94,28 @@ loo1 <- loo::loo(LL1, r_eff=reff1)
 psis1 <- loo::loo(LL1, r_eff=reff1, is_method="psis")
 pareto_k1 <- psis1$diagnostics$pareto_k
 
+# See if my model does the same as the one in the book
+#
+# Make the tank cluster variable
+d$tank <- 1:nrow(d)
+dat <- list(
+    S = d$surv,
+    N = d$density,
+    tank = d$tank )
+# Approximate posterior
+m13.1 <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] ,
+        a[tank] ~ dnorm( 0 , 1.5 )
+    ), data=dat , chains=4 , log_lik=TRUE )
+precis(m13.1,depth = 2)
+# Compare to the book's results
+rethinking::stancode(m13.1)
+post1_ulam <- extract.samples(m13.1)
+post1_ulam 
+# TODO: different results? Why?
+
 # Prior implications
 #
 N <- 1e5
@@ -124,7 +146,7 @@ file <- file.path(path, "stan", "13", "2.stan")
 mdl2 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit2 <- mdl1$sample(data=dat_ls)
 # Note that the alpha parameters are on the log-odds scale!
-fit2$print(max_rows=150)
+fit2$print(max_rows=200)
 
 # Diagnostics
 #
@@ -145,10 +167,54 @@ loo2 <- loo::loo(LL2, r_eff=reff2)
 psis2 <- loo::loo(LL2, r_eff=reff2, is_method="psis")
 pareto_k2 <- psis2$diagnostics$pareto_k
 
+# See if my model does the same as the one in the book
+#
+m13.2 <- ulam(
+    alist(
+        S ~ dbinom( N , p ) ,
+        logit(p) <- a[tank] ,
+        a[tank] ~ dnorm( a_bar , sigma ) ,
+        a_bar ~ dnorm( 0 , 1.5 ) ,
+    sigma ~ dexp( 1 )
+), data=dat , chains=4 , log_lik=TRUE )
+precis(m13.2,depth = 2)
+# Compare to the book's results
+rethinking::stancode(m13.2)
+# Check!
+
 # Model comparison
 #
 comp <- loo::loo_compare(loo1, loo2)
 print(comp, simplify=FALSE)
 
-# TODO: Posterior predictive checking 
-# TODO: Check if ulam code and cmdstanr code give the same results 
+# Plot the results
+#
+# Posterior distribution of the intercepts (probabilities)
+pat <- grep("alpha", colnames(post1))
+# Posterior mean of the no pooling estimates of the intercepts (probabilities)
+alpha_hat_np <- plogis(colMeans(post1[, pat]))
+# Posterior mean of the partial pooling estimates of the intercepts (probabilities))
+alpha_hat_pp <- plogis(colMeans(post2[, pat]))
+
+n_tanks <- length(alpha_hat_np)
+plot(c(1, n_tanks), c(0, 1), type="n", xlab="Tank", ylab="Intercept",
+     main="Posterior distribution of the intercepts")
+     points(seq(n_tanks), alpha_hat_np, pch=16, col="blue")
+     points(seq(n_tanks), alpha_hat_pp, pch=16, col="red")
+     # draw vertical dividers between tank densities
+    axis( 1 , at=c(1,16,32,48) , labels=c(1,16,32,48) )
+abline( h=mean(alpha_hat_np), lty=2 )
+abline( v=16.5 , lwd=0.5 )
+abline( v=32.5 , lwd=0.5 )
+text( 8 , 0 , "small tanks" )
+text( 16+8 , 0 , "medium tanks" )
+text( 32+8 , 0 , "large tanks" )
+
+colnames(post2)
+# Infered population-distribution of survival
+# show first 100 populations in the posterior
+plot( NULL , xlim=c(-3,4) , ylim=c(0,0.35) ,
+    xlab="log-odds survive" , ylab="Density" )
+for ( i in 1:100 )
+    curve( dnorm(x,post$a_bar[i],post$sigma[i]) , add=TRUE ,
+    col=col.alpha("black",0.2) )
