@@ -84,7 +84,9 @@ fit1$diagnostic_summary()
 # rethinking::trankplot(fit1_stan)
 
 # Extract posterior draws
-post1 <- fit1$draws(format="matrix")
+(post1 <- fit1$draws(format="matrix"))
+# Plausibility check: Compare mean to precis output (see: below)
+mean(post1[,"alpha[2]"])
 # Extract the log likelihood matrix
 LL1 <- fit1$draws("log_lik")
 # Relative effective sample size
@@ -144,7 +146,7 @@ for(i in 1:50) {
 path <- "~/projects/stanmisc"
 file <- file.path(path, "stan", "13", "2.stan")
 mdl2 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
-fit2 <- mdl1$sample(data=dat_ls)
+fit2 <- mdl2$sample(data=dat_ls)
 # Note that the alpha parameters are on the log-odds scale!
 fit2$print(max_rows=200)
 
@@ -158,6 +160,9 @@ fit2$diagnostic_summary()
 
 # Extract posterior draws
 post2 <- fit2$draws(format="matrix")
+# Plausibility check: Compare mean to precis output (see: below)
+colnames(post2)
+mean(post2[,"alpha[10]"])
 # Extract the log likelihood matrix
 LL2 <- fit2$draws("log_lik")
 # Relative effective sample size
@@ -177,6 +182,7 @@ m13.2 <- ulam(
         a_bar ~ dnorm( 0 , 1.5 ) ,
     sigma ~ dexp( 1 )
 ), data=dat , chains=4 , log_lik=TRUE )
+
 precis(m13.2,depth = 2)
 # Compare to the book's results
 rethinking::stancode(m13.2)
@@ -191,16 +197,14 @@ print(comp, simplify=FALSE)
 #
 # Posterior distribution of the intercepts (probabilities)
 pat <- grep("alpha", colnames(post1))
-# Posterior mean of the no pooling estimates of the intercepts (probabilities)
-alpha_hat_np <- plogis(colMeans(post1[, pat]))
-# Posterior mean of the partial pooling estimates of the intercepts (probabilities))
+# Posterior mean of the partial pooling estimates of the intercepts (probabilities)
 alpha_hat_pp <- plogis(colMeans(post2[, pat]))
 
 n_tanks <- length(alpha_hat_np)
 plot(c(1, n_tanks), c(0, 1), type="n", xlab="Tank", ylab="Intercept",
      main="Posterior distribution of the intercepts")
-     points(seq(n_tanks), alpha_hat_np, pch=16, col="blue")
-     points(seq(n_tanks), alpha_hat_pp, pch=16, col="red")
+     points(seq(n_tanks), d$propsurv, pch=16, col="steelblue")
+     points(seq(n_tanks), alpha_hat_pp, pch=1)
      # draw vertical dividers between tank densities
     axis( 1 , at=c(1,16,32,48) , labels=c(1,16,32,48) )
 abline( h=mean(alpha_hat_np), lty=2 )
@@ -210,11 +214,17 @@ text( 8 , 0 , "small tanks" )
 text( 16+8 , 0 , "medium tanks" )
 text( 32+8 , 0 , "large tanks" )
 
-colnames(post2)
+alpha_bar <- post2[,"alpha_bar"]
+sigma <- post2[,"sigma"]
 # Infered population-distribution of survival
 # show first 100 populations in the posterior
 plot( NULL , xlim=c(-3,4) , ylim=c(0,0.35) ,
     xlab="log-odds survive" , ylab="Density" )
 for ( i in 1:100 )
-    curve( dnorm(x,post$a_bar[i],post$sigma[i]) , add=TRUE ,
+    curve( dnorm(x,alpha_bar[i],sigma[i]) , add=TRUE ,
     col=col.alpha("black",0.2) )
+
+# Sample 5e3 imaginary tanks from the posterior averaged over the posterior
+sim_tanks <- rnorm(5e3, alpha_bar, sigma)
+plot(density(plogis(sim_tanks), adj=0.1), xlab = "Probability of survival")
+
