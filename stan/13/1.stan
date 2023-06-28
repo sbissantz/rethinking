@@ -9,6 +9,8 @@ data{
 parameters{
   vector[n_tanks] alpha; 
 }
+transformed parameters{
+  vector[n_tanks] p_lo;
   for (i in 1:n_tanks) {
     p_lo[i] = alpha[T[i]];
   }
