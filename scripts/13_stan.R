@@ -228,3 +228,81 @@ for ( i in 1:100 )
 sim_tanks <- rnorm(5e3, alpha_bar, sigma)
 plot(density(plogis(sim_tanks), adj=0.1), xlab = "Probability of survival")
 
+#
+# No-pooling simulation
+#
+
+# Assign values to the parameters
+#
+# Grand mean log odds of survival
+a_bar <- 1.5
+# Standard deviation around the grand mean
+sigma <- 1.5
+# Number of ponds
+nponds <- 60
+# Be explicit about the class (stan)!
+Ni <- as.integer( rep( c(5,10,25,35) , each = 15 ))
+# Simulate a population of ponds (log-odds of survival)) 
+a_pond <- rnorm( npons , a_bar , sigma )
+# Put everything in a data frame
+dsim <- data.frame( pond = seq(npons) , Ni = Ni, true_a = a_pond )
+# Convert to probability (logit link)
+dsim$p_true <- plogis(dsim$true_a)
+# Simulate the number of survivors in each pond
+dsim$Si <- rbinom( nponds, prob=p_pond, size=dsim$Ni )
+
+# No-pooling estimates
+#
+dsim$p_nopool <- dsim$Si / dsim$Ni
+
+# Partial-pooling model 
+#
+dsim$P <- seq(nponds) 
+dat_ls <- list("n_ponds" = length(dsim$Ni),  "P" = dsim$P, "N" = dsim$Ni, "S" =
+               dsim$Si)
+
+# Fit the first model (no pooling)
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "13", "3.stan")
+mdl3 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit3 <- mdl3$sample(data=dat_ls)
+# Note that the alpha parameters are on the log-odds scale!
+fit3$print(max_rows=150)
+
+# Diagnostics
+#
+fit3$sampler_diagnostics()
+fit3$cmdstan_diagnose()
+fit3$diagnostic_summary()
+# fit1_stan <- rstan::read_stan_csv(fit1$output_files())
+# rethinking::trankplot(fit1_stan)
+
+# Extract posterior draws
+(post3 <- fit3$draws(format="matrix"))
+# Plausibility check: Compare mean to precis output (see: below)
+
+# Partial pooling estimates
+#
+# Extract only alpha and sigma from the posterior
+# (pat <- grepl("alpha|sigma" , colnames(post3)))
+(pat <- grepl("alpha" , colnames(post3)))
+alpha <- colMeans(post3[,pat])
+
+nopool_error <- abs( dsim$p_nopool - dsim$p_true )  
+# Exclude alpha_bar
+partpool_error <- abs( plogis(alpha[-61]) - dsim$p_true)
+
+# Averages
+nopool_avg <- aggregate( nopool_error , list(dsim$N) , mean )
+partpool_avg <- aggregate( partpool_error , list(dsim$N) , mean )
+
+# Plot the results
+plot( seq(60), nopool_error, xlab = "pond", ylab = "absolute error", pch = 20)
+points( seq(60), partpool_error, pch = 20, col = "red" )
+
+
+
+
+
+
