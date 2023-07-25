@@ -301,6 +301,138 @@ partpool_avg <- aggregate( partpool_error , list(dsim$N) , mean )
 plot( seq(60), nopool_error, xlab = "pond", ylab = "absolute error", pch = 20)
 points( seq(60), partpool_error, pch = 20, col = "red" )
 
+#
+# 13.3 More than one type of cluster
+#
+
+library(rethinking)
+data(chimpanzees)
+
+View(chimpanzees)
+?chimpanzees
+
+# Prior implications
+#
+N <- 1e5
+#
+# Alpha prior
+a_bar_lo <- rnorm(N, 0, 1.5)
+sigma_a_lo <- rexp(N,1)
+a_lo <- rnorm(a_bar_lo, sigma_a_lo)  # flat! 
+hist(a_lo)
+# Gamma prior
+g_bar_lo <- rnorm(N, 0, 1.5)
+sigma_g_lo <- rexp(N,1)
+g_lo <- rnorm(rep(0,N), sigma_g_lo)  # flat! 
+hist(g_lo)
+# Beta prior
+# b_lo <- rnorm(N, 0, 0.25) # seems more plausible 
+b_lo <- rnorm(N, 0, 0.5)
+
+# Prior predictive checks 
+# logit(pi) = X_i*beta + alpha
+# pi = logit^-1(X_i*beta + alpha) = sigmoid(X_i*beta + alpha)
+plot(c(-4,4), c(0,1), type="n", ylab="Probability to pull left",
+     xlab="Predictor values", main="Prior predictive simulation")
+for(i in 1:50) {
+    curve(plogis(a_lo[i] + g_lo[i] + b_lo[i]  * x), from=-4, to=4, add=TRUE)
+}
+
+# Load the data
+#
+library(rethinking)
+data(chimpanzees)
+d <- chimpanzees
+# Create a treatment variable
+d$treatment <- 1 + d$prosoc_left + 2*d$condition
+
+# Data list
+#
+dat_ls <- list("N" = nrow(d), "tid" = d$treatment, 
+"tno" = length(unique(d$treatment)),
+"aid" = d$actor, "ano" = length(unique(d$actor)), "bid" = d$block, 
+"bno" = length(unique(d$block)),
+"y" = d$pulled_left)
+
+# Fit the model
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "13", "4.stan") 
+mdl1 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit1 <- mdl$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit1$sampler_diagnostics()
+fit1$cmdstan_diagnose()
+fit1$diagnostic_summary()
+
+# Outputs
+#
+# Approximately the same as the book
+fit1$cmdstan_summary()
+fit1$summary(variables=c("alpha_j", "beta_j", "gamma_j", "sigma_a", "sigma_g"))
+
+# Draws from the posterior 
+post1 <- fit1$draws(format="data.frame")
+
+# Fit the model
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "13", "5.stan") 
+mdl2 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit2 <- mdl2$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit2$sampler_diagnostics()
+fit2$cmdstan_diagnose()
+fit2$diagnostic_summary()
+
+# Outputs
+#
+# Approximately the same as the book
+fit2$cmdstan_summary()
+fit2$summary(variables=c("alpha_j", "beta_j", "sigma_a"))
+
+# Draws from the posterior 
+post2 <- fit2$draws(format="data.frame")
+
+# Model comparison
+#
+# Extract the log likelihood matrix
+LL1 <- fit1$draws("log_lik")
+LL2 <- fit2$draws("log_lik")
+# Relative effective sample size
+reff1 <- loo::relative_eff(exp(LL1))
+reff2 <- loo::relative_eff(exp(LL2))
+# LOO
+loo1 <- loo::loo(LL1, r_eff=reff1)
+loo2 <- loo::loo(LL2, r_eff=reff2)
+comp <- loo::loo_compare(loo1, loo2)
+print(comp, simplify=FALSE)
+
+# Fit the model
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "13", "6.stan") 
+mdl3 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit3 <- mdl3$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit3$sampler_diagnostics()
+fit3$cmdstan_diagnose()
+fit3$diagnostic_summary()
+
+# Outputs
+#
+# Approximately the same as the book
+fit3$cmdstan_summary()
+fit3$summary(variables=c("beta_j"))
+
+# Draws from the posterior 
+post3 <- fit3$draws(format="data.frame")
 
 
 
