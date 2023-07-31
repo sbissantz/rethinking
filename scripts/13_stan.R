@@ -353,7 +353,7 @@ dat_ls <- list("N" = nrow(d), "tid" = d$treatment,
 "aid" = d$actor, "ano" = length(unique(d$actor)), "bid" = d$block, 
 "bno" = length(unique(d$block)),
 "y" = d$pulled_left)
-
+dat_ls
 # Fit the model
 #
 path <- "~/projects/stanmisc"
@@ -434,7 +434,106 @@ fit3$summary(variables=c("beta_j"))
 # Draws from the posterior 
 post3 <- fit3$draws(format="data.frame")
 
+#
+# Divergent transitionss
+#
 
+# The Devil's Funnel
+#
+dat_ls <- list(N=1)
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "13", "7.stan") 
+mdl7 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+# With fixed params I get no divergent transition warnings
+# fit7 <- mdl7$sample(fixed_param=TRUE)
+fit7 <- mdl7$sample(data=dat_ls)
+# Can also adapt_delta
+# ...does not help. Reparameterize!
+fit7 <- mdl7$sample(data=dat_ls, adapt_delta=0.99)
 
+# Book Version
+#
+m13.7 <- rethinking::ulam(
+    alist(
+        v ~ normal( 0 , 3 ) ,
+        x ~ normal( 0 , exp(v) )
+    ), data=dat_ls , chains=4 , log_lik=TRUE ) 
+rethinking::stancode(m13.7)
 
+# Diagnostics
+#
+fit7$sampler_diagnostics()
+fit7$cmdstan_diagnose()
+fit7$diagnostic_summary()
+
+# Outputs
+#
+fit7$cmdstan_summary()
+
+# Reparameterized model
+#
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "13", "8.stan") 
+# With fixed params I get no divergent transition warnings
+mdl8 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit8 <- mdl8$sample(dat_ls)
+
+# Diagnostics
+#
+fit8$sampler_diagnostics()
+fit8$cmdstan_diagnose()
+fit8$diagnostic_summary()
+
+# Outputs
+#
+fit8$cmdstan_summary()
+
+#
+# Non-centered chimpanzees
+#
+
+dat_ls <- list("N" = nrow(d), "tid" = d$treatment, 
+"tno" = length(unique(d$treatment)),
+"aid" = d$actor, "ano" = length(unique(d$actor)), "bid" = d$block, 
+"bno" = length(unique(d$block)),
+"y" = d$pulled_left)
+dat_ls
+
+# Book version
+
+m13.6nc <- rethinking::ulam(
+    alist(
+        y ~ bernoulli( p ) ,
+        logit(p) <- a_bar + z[aid] * sigma_a + x[bid]*sigma_g + b[tid],
+        b[tid] ~ normal( 0 , 0.5 ) ,
+        z[aid] ~ normal( 0 , 1 ) ,
+        x[bid] ~ normal( 0 , 1 ) ,
+        a_bar ~ normal( 0 , 1.5 ) ,
+        sigma_a ~ exponential( 1 ) ,
+        sigma_g ~ exponential( 1 ) ,
+        gq> vector[aid]:a <<- a_bar + z * sigma_a ,
+        gq> vector[bid]:g <<- x * sigma_g 
+    ), data=dat_ls , chains=4)
+
+rethinking::stancode(m13.6nc)
+
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "13", "6nc.stan") 
+mdl6nc <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit6nc <- mdl6nc$sample(data=dat_ls)
+
+# Diagnostics
+#
+fit6nc$sampler_diagnostics()
+fit6nc$cmdstan_diagnose()
+fit6nc$diagnostic_summary()
+
+# Outputs
+#
+# Approximately the same as the book
+fit6nc$cmdstan_summary()
+fit6nc$summary(variables=c("alpha_j", "beta_j", "gamma_j"))
+
+# Draws from the posterior 
+post6nc <- fit6nc$draws(format="data.frame")
 
