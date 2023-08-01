@@ -549,7 +549,6 @@ post6nc <- fit6nc$draws(format="data.frame")
 # Posterior retrodictions (same cluster)
 str(post6nc$`a_j[1]`)
 colnames(post6nc)
-# TODO: Should I recode it, so that there is a matrix?
-
+# TODO: Should I recode it, so that there is a matrix
 
 
