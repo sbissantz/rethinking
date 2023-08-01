@@ -491,7 +491,12 @@ fit8$cmdstan_summary()
 #
 # Non-centered chimpanzees
 #
-
+library(rethinking)
+data(chimpanzees)
+d <- chimpanzees
+# Create a treatment variable
+d$treatment <- 1 + d$prosoc_left + 2*d$condition
+# Create data list
 dat_ls <- list("N" = nrow(d), "tid" = d$treatment, 
 "tno" = length(unique(d$treatment)),
 "aid" = d$actor, "ano" = length(unique(d$actor)), "bid" = d$block, 
@@ -536,4 +541,15 @@ fit6nc$summary(variables=c("alpha_j", "beta_j", "gamma_j"))
 
 # Draws from the posterior 
 post6nc <- fit6nc$draws(format="data.frame")
+
+# 
+# Posterior predictions
+#
+
+# Posterior retrodictions (same cluster)
+str(post6nc$`a_j[1]`)
+colnames(post6nc)
+# TODO: Should I recode it, so that there is a matrix?
+
+
 
