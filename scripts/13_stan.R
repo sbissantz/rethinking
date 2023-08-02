@@ -502,7 +502,6 @@ dat_ls <- list("N" = nrow(d), "tid" = d$treatment,
 "aid" = d$actor, "ano" = length(unique(d$actor)), "bid" = d$block, 
 "bno" = length(unique(d$block)),
 "y" = d$pulled_left)
-dat_ls
 
 # Book version
 
@@ -534,21 +533,94 @@ fit6nc$cmdstan_diagnose()
 fit6nc$diagnostic_summary()
 
 # Outputs
-#
-# Approximately the same as the book
-fit6nc$cmdstan_summary()
+# Approximately the same as the book fit6nc$cmdstan_summary()
 fit6nc$summary(variables=c("alpha_j", "beta_j", "gamma_j"))
 
 # Draws from the posterior 
-post6nc <- fit6nc$draws(format="data.frame")
+post6nc <- fit6nc$draws(format="matrix")
 
 # 
 # Posterior predictions
 #
 
 # Posterior retrodictions (same cluster)
-str(post6nc$`a_j[1]`)
-colnames(post6nc)
-# TODO: Should I recode it, so that there is a matrix
+
+# Extract the relevant variables
+alpha <- post6nc[,grepl("alpha_j", colnames(post6nc))]
+beta <- post6nc[,grepl("beta_j", colnames(post6nc))]
+gamma <- post6nc[,grepl("gamma_j", colnames(post6nc))]
+
+# Linear retrodiction 
+p_link <- function(actor, block, tx) {
+   plogis(alpha[,actor] + gamma[,block] + beta[,tx])
+}
+# Raw scores (unsummarized)
+p_raw <- sapply(1:4, p_link, actor=2, block=1)
+# Posterior mean and 89% compatibility interval
+(p_mu <- colMeans(p_raw))
+(p_pi <- apply(p_raw, 2, rethinking::PI))
+
+# Posterior predictions (different cluster)
+# Importan: alpha_bar and sigma_a, because they define the population we can
+# sample from!
+
+# Parameters for the statistical population
+alpha_bar <- post6nc[,grepl("alpha_bar", colnames(post6nc))]
+sigma_a <- post6nc[,grepl("sigma_a", colnames(post6nc))]
+
+#  Linear prediction for average(!) actor
+p_link_abar <- function(tx) {
+    # Important: Ignore block to extrapolate to new block
+    # i.e. predict beyond the sampled blocks
+    # Asm: Average block effect is zero
+   plogis(alpha_bar + beta[,tx])
+}
+
+# Raw scores for the average actor (unsummarized)
+p_raw <- sapply(1:4, p_link_abar)
+p_mu <- colMeans(p_raw)
+p_ci <- apply(p_raw, 2, rethinking::PI)
+
+# Viisuallize
+plot( NULL, xlab="treatment", ylab="proportion pulled left", ylim = c(0,1),
+     xaxt="n", xlim = c(1,4) , main = "Average actor")
+axis( 1 , at=1:4 , labels=c("R/N", "L/N", "R/P", "L/P") )
+lines(1:4, p_mu)
+rethinking::shade( p_ci , 1:4 )
+
+# Sample new actors from the learned population of actors 
+N_alpha_bar <- length(alpha_bar)
+# Important do the chimpanze sampling outside the link function
+alpha_sim <- rnorm(N_alpha_bar, alpha_bar, sigma_a)
+# Linear predictions for new(!) actors
+p_link_asim <- function(tx) {
+   plogis(alpha_sim + beta[,tx])
+}
+# Raw scores for new actors (unsummarized)
+p_raw_asim <- sapply(1:4, p_link_asim)
+p_mu_asim <- colMeans(p_raw_asim)
+p_ci_asim <- apply(p_raw_asim, 2, rethinking::PI)
+
+# Visualize marginal actor effects 
+plot( NULL, xlab="treatment", ylab="proportion pulled left", ylim = c(0,1),
+     xaxt="n", xlim = c(1,4) , main = "Average actor")
+axis( 1 , at=1:4 , labels=c("R/N", "L/N", "R/P", "L/P") )
+lines(1:4, p_mu_asim)
+rethinking::shade( p_ci_asim , 1:4 )
+
+# Better!
+
+# Visualize both(!) treatment effect and variation in actors 
+plot(NULL, xlab = "treatment", ylab = "proportion pulled left", ylim = c(0,1),
+     xaxt = "n", xlim = c(1,4), main = "Simulated actors")
+axis(1, at = 1:4, labels = c("R/N", "L/N", "R/P", "L/P"))
+# Simulate a new line (a new actor) for each treatment
+for(i in 1:1e3) {
+    lines(1:4, p_raw_asim[i,], col = col.alpha("black", 0.8))
+}
+# Import: With strong (handedness) preferences the treatment does not much,
+# however, with weak preferences (middle) the treatment has an effect
+
+
 
 
