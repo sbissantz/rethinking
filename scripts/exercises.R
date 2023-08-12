@@ -1520,3 +1520,90 @@ for ( x in 1:4 )
     lines( c(x,x)+0.01 , c(p[x]-q[x],p[x]) , col="slateblue" , lwd=2 )
 # add number labels
 text( 1:4+0.2 , p-q/2 , labels=1:4 , col="slateblue" )
+
+# 13M1 ---------------------------------------------------------------------
+
+library(rethinking)
+data(reedfrogs)
+d <- reedfrogs
+# Show data
+str(d)
+
+# Data processing
+#
+# Each row is a tank, so can use the row number
+n_tanks <- nrow(d)
+# Tank ID (1, ..., 48), since 
+d$tank <- seq(n_tanks)
+# Predation
+n_pred <- length(unique(d$pred))
+# Size
+n_siz <- length(unique(d$size))
+
+# Data list 
+dat_ls <- list("n_tanks"=n_tanks, "n_pred" = n_pred, "n_siz" = n_siz,
+               "surv"=d$surv, "N"=d$density, "tank"=d$tank,
+               "siz"=as.integer(d$size), "pred"=as.integer(d$pred))
+
+
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "exercises", "mdl_13M1.stan")
+mdl2 <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit2 <- mdl2$sample(data=dat_ls)
+# Note that the alpha parameters are on the log-odds scale!
+fit2$print(max_rows=200)
+
+# The infered variation in the model from the script is sigma=1.62, the other
+# is sigma=0.78, so there is quite a reduction in variation. I think one of
+# varibale explains some variation in the survival rates across tanks, so there
+# is less variation left for the varying intercepts.
+
+# 13M2 ---------------------------------------------------------------------
+
+         Estimate  SE
+elpd_loo   -110.1 4.1
+p_loo        31.1 1.6
+looic       220.3 8.3
+
+post2 <- fit2$draws(format="matrix")
+# Plausibility check: Compare mean to precis output (see: below)
+colnames(post2)
+mean(post2[,"alpha[10]"])
+# Extract the log likelihood matrix
+LL2 <- fit2$draws("log_lik")
+# Relative effective sample size
+reff2 <- loo::relative_eff(exp(LL2))
+loo2 <- loo::loo(LL2, r_eff=reff2)
+# PSIS
+psis2 <- loo::loo(LL2, r_eff=reff2, is_method="psis")
+pareto_k2 <- psis2$diagnostics$pareto_k
+
+psis2
+
+# loo-cv score is a bit smaller that is in line with the assumption 
+
+# 13M3 ---------------------------------------------------------------------
+
+# Data list 
+dat_ls <- list("n_tanks"=n_tanks, "surv"=d$surv, "N"=d$density, "tank"=d$tank)
+
+path <- "~/projects/stanmisc"
+file <- file.path(path, "stan", "exercises", "mdl_13M3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=dat_ls)
+# Note that the alpha parameters are on the log-odds scale!
+fit$print(max_rows=200)
+
+N <- 1e3 
+alpha_bar <- rnorm(N, 0, 1)
+sigma <- rexp(N, 1)
+cauchy <- rcauchy(N, alpha_bar, sigma)
+nrml <- rnorm(N, alpha_bar, sigma)
+plot(density(cauchy), xlim=c(-10, 10))
+lines(density(nrml))
+
+# The cauchy distribution is a more dispesed distribution. In fact it is the t
+# distribution with 1 df (nu). The t in turn equals the normal distribution if
+# df approaches infinity.  Therefore, the cauchy distribution is more spread
+# out and thus less informative as a prior for the intercepts. Therefore the
+# Cauchy will often lead to more divergent transitions
