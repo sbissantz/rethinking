@@ -386,8 +386,8 @@ m14.6 <- rethinking::ulam(
         c(bEW,bQE) ~ normal( 0 , 0.5 ),
         Rho ~ lkj_corr( 2 ),
         Sigma ~ exponential( 1 )
-    ), data=dat_sim , chains=4 , cores=4 )
-precis( m14.6 , depth=3 )
+    ), data=dat_sim , chains=4 , cores=4)
+rethinking::precis( m14.6 , depth=3 )
 rethinking::stancode(m14.6)
 
 # Stan
