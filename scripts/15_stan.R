@@ -347,8 +347,6 @@ stan_list <- list(
     M = rethinking::standardize(d$logmass)
 )
 
-stan_list
-
 # Stan model
 path <- "~/projects/rethinking2nd"
 file <- file.path(path, "stan", "15", "5.stan")
@@ -358,5 +356,111 @@ fit$cmdstan_diagnose()
 # Note that the alpha parameters are on the log-odds scale!
 fit$print(max_rows=200)
 
+# Posterior draws
+postdraws <- fit$draws(format = "data.frame")
+# Imputed Values
+B_imp <- fit$draws("B_mis", format = "matrix")
+# Mean 
+B_imp_mu <- apply(B_imp, 2, mean)
+# Compatability Interval
+B_imp_ci <- apply(B_imp, 2, rethinking::PI)
+# Visualize
+plot(dat_list$B, dat_list$K, pch=16, col="steelblue")
+Ki <- dat_list$K[stan_list$ii_B_mis]
+points( B_imp_mu, Ki) 
+for(i in 1:12 ) {
+ lines(B_imp_ci[,i], rep(Ki[i],2))   
+} 
+# Visualize
+plot(dat_list$M, dat_list$B, pch=16, col="steelblue")
+Mi <- dat_list$M[stan_list$ii_B_mis]
+points( B_imp_mu, Mi) 
+for(i in 1:12 ) {
+ lines(rep(Mi[i],2), B_imp_ci[,i])
+} 
 
-# TODO Some NA values for Rhat....with ULAM not...
+# Important: Imputed Values fail to follow the regression trend 
+# A and M should be connected through U!
+
+# Ulam version
+#
+m15.7 <- ulam(
+alist(
+# K as function of B and M
+K ~ dnorm( mu , sigma ),
+mu <- a + bB*B_merge + bM*M,
+# M and B correlation
+MB ~ multi_normal( c(muM,muB) , Rho_BM , Sigma_BM ),
+matrix[29,2]:MB <<- append_col( M , B_merge ),
+# define B_merge as mix of observed and imputed values
+vector[29]:B_merge <- merge_missing( B , B_impute ),
+# priors
+c(a,muB,muM) ~ dnorm( 0 , 0.5 ),
+c(bB,bM) ~ dnorm( 0, 0.5 ),
+sigma ~ dexp( 1 ),
+Rho_BM ~ lkj_corr(2),
+Sigma_BM ~ dexp(1)
+) , data=dat_list , chains=4 , cores=4 )
+
+precis( m15.7 , depth=3 , pars=c("bM","bB","Rho_BM" ) )
+
+stancode(m15.7)
+
+# Stan version
+#
+stan_list <- list(
+    N = nrow(d),
+    N_obs = sum(complete.cases(d)),
+    ii_B_obs = which(!is.na(d$neocortex.perc)),
+    N_mis = sum(!complete.cases(d)),
+    ii_B_mis = which(is.na(d$neocortex.perc)),
+    B_obs = dat_list$B[complete.cases(dat_list$B)],
+    K = rethinking::standardize(d$kcal.per.g),
+    M = rethinking::standardize(d$logmass)
+)
+
+# Stan model
+path <- "~/projects/rethinking2nd"
+file <- file.path(path, "stan", "15", "6.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=stan_list)
+fit$cmdstan_diagnose()
+# Note that the alpha parameters are on the log-odds scale!
+fit$print(max_rows=200)
+
+# Posterior draws
+postdraws <- fit$draws(format = "data.frame")
+# Correlation thorugh including the residual confound: U
+Rho_BM <- fit$draws("Rho_BM", format = "matrix")
+# Imputed Values
+B_imp <- fit$draws("B_mis", format = "matrix")
+# Mean 
+B_imp_mu <- apply(B_imp, 2, mean)
+# Compatability Interval
+B_imp_ci <- apply(B_imp, 2, rethinking::PI)
+
+
+# Visualize the correlation BM through U
+mean(Rho_BM[,2])
+plot(density(Rho_BM[,2]))
+# The mean correlation is .6 so this shows the strong correlation
+# etween B and M that we knew it existed: U. 
+# Import: This info should improve the imputation process and thus inference!
+
+# Visualize
+plot(dat_list$B, dat_list$K, pch=16, col="steelblue")
+Ki <- dat_list$K[stan_list$ii_B_mis]
+points( B_imp_mu, Ki) 
+for(i in 1:12 ) {
+ lines(B_imp_ci[,i], rep(Ki[i],2))   
+} 
+
+# Visualize
+# Important! Now the lines follow the regression trend! 
+plot(dat_list$M, dat_list$B, pch=16, col="steelblue")
+Mi <- dat_list$M[stan_list$ii_B_mis]
+points( B_imp_mu, Mi) 
+for(i in 1:12 ) {
+ lines(rep(Mi[i],2), B_imp_ci[,i])
+} 
+
