@@ -457,6 +457,7 @@ for(i in 1:12 ) {
 
 # Visualize
 # Important! Now the lines follow the regression trend! 
+# Modeling the unobserved confound using a multivariate model helped! 
 plot(dat_list$M, dat_list$B, pch=16, col="steelblue")
 Mi <- dat_list$M[stan_list$ii_B_mis]
 points( B_imp_mu, Mi) 
@@ -464,3 +465,36 @@ for(i in 1:12 ) {
  lines(rep(Mi[i],2), B_imp_ci[,i])
 } 
 
+#
+# Categorical errors and discrete absence
+#
+
+# Draw a DAG
+dag <- dagitty::dagitty('dag{
+    C [pos="0,0"]
+    N [pos="1,0"]
+    C_ast [pos="-1,0"]
+    mC [pos="-2,0"]
+    C -> N 
+    C -> C_ast
+    mC -> C_ast
+}')
+plot(dag)
+
+# Generative simulation
+#
+# N_i ~ Poisson(lambda_i)
+# log(lambda_i) = a + b * C_i
+# C_i ~ Bernoulli(k)
+# mC_i ~ Bernoulli(k)
+
+# Number of households
+N <- 100L
+# alpha parameter
+alpha <- 5
+# beta
+beta <- -3
+# k
+k <- 0.5
+# r
+r <- 0.5
