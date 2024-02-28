@@ -485,16 +485,46 @@ plot(dag)
 #
 # N_i ~ Poisson(lambda_i)
 # log(lambda_i) = a + b * C_i
-# C_i ~ Bernoulli(k)
+# C_i ~ Bernoulli(k) 
 # mC_i ~ Bernoulli(k)
 
 # Number of households
-N <- 100L
-# alpha parameter
+set.seed(9)
+N_houses <- 100L
 alpha <- 5
-# beta
-beta <- -3
-# k
+beta <- (-3)
 k <- 0.5
-# r
-r <- 0.5
+r <- 0.2
+cat <- rethinking::rbern( N_houses , k )
+notes <- rpois( N_houses , alpha + beta*cat )
+R_C <- rethinking::rbern( N_houses , r )
+cat_obs <- cat
+cat_obs[R_C==1] <- (-9L)
+dat <- list(
+notes = notes,
+cat = cat_obs,
+RC = R_C,
+N = as.integer(N_houses) )
+
+m15.8 <- rethinking::ulam(
+    alist(
+        # singing bird model
+        ## cat known present/absent:
+        notes|RC==0 ~ poisson( lambda ),
+        log(lambda) <- a + b*cat,
+        ## cat NA:
+        notes|RC==1 ~ custom( log_sum_exp(
+        log(k) + poisson_lpmf( notes | exp(a + b) ),
+        log(1-k) + poisson_lpmf( notes | exp(a) )
+        ) ),
+        # priors
+        a ~ normal(0,1),
+        b ~ normal(0,0.5),
+        # sneaking cat model
+        cat|RC==0 ~ bernoulli(k),
+        k ~ beta(2,2)
+    ), data=dat , chains=4 , cores=4 )
+
+# Stancde
+#
+
