@@ -1,14 +1,3 @@
-functions{
-    vector merge_missing( array[] int miss_indexes , vector x_obs , vector x_miss ) {
-        int N = dims(x_obs)[1];
-        int N_miss = dims(x_miss)[1];
-        vector[N] merged;
-        merged = x_obs;
-        for ( i in 1:N_miss )
-            merged[ miss_indexes[i] ] = x_miss[i];
-        return merged;
-    }
-}
 data{
     int<lower=0> N;
     int<lower=0> N_obs;
