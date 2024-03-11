@@ -22,7 +22,6 @@ abline(lm(H ~ S), lwd = 3 , col = "steelblue")
 # Estimated effect: S -> Hstar (partially observed)
 abline(lm(Hstar ~ S), lwd = 3, col = 2)
 
-
 # Dog eats homework of students how study too much (MAR)
 # Conditional on student
 set.seed(112)
@@ -143,7 +142,7 @@ mBMG_OU_cc <- ulam( fMBG_OU , data=dat_cc , chains=4 , cores=4 , sample=TRUE )
 precis(mBMG_OU, depth=1)
 precis(mBMG_OU_cc, depth=1)
 
-# Stan version
+# Stan version 
 #
 
 # Stan list
