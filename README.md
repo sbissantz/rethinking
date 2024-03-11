@@ -1,8 +1,8 @@
 # Statistical Rethinking Book (2nd)
 
 Welcome to my repository! Glad to have you here. The repo's plan is ambitious.
-I want to (re)code Richard's book in Stan. This requires two things: time and
-perseverance. 
+I want to (re)code Richard's book and lectures in Stan. This requires two
+things: time and perseverance. 
 
 ---
 
