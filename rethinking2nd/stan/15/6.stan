@@ -50,6 +50,8 @@ model{
     {
     // Imputation model (like the measurement error model)
     vector[2] MU;
+    // With this definition Mu is a row vector and then transposed to be a 
+    // column vector...
     MU = [ muM , muB ]';
     // ":" here means all columns
     for ( i in 1:29 ) MB[i,:] ~ multi_normal( MU , quad_form_diag(Rho_BM , Sigma_BM) );
