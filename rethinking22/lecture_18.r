@@ -76,9 +76,10 @@ abline(lm(Hstar ~ S), lwd = 3, col = 2) # Boooom!
 # Primated Phylogeny
 # Moving from complete cases to imputation
 #
-
+library(rethinking)
 data(Primates301)
 d <- Primates301
+data(Primates301_nex)
 d$name <- as.character(d$name)
 dstan <- d[ complete.cases( d$group_size , d$body , d$brain ) , ]
 spp_cc <- dstan$name
@@ -113,6 +114,7 @@ Dmat <- cophenetic( tree_trimmed )
 
 # distance matrix
 dat_all$Dmat <- Dmat[ spp , spp ] / max(Dmat)
+spp_obs <- dstan$name
 dat_cc$Dmat <- Dmat[ spp_obs , spp_obs ] / max(Dmat)
 
 # Ulam version
@@ -145,17 +147,27 @@ precis(mBMG_OU_cc, depth=1)
 # Stan version 
 #
 
+# TODO: Simplifiy, start only with one missing variable and then build up!
+
 # Stan list
 stan_ls <- list(
-    "N_spp" = nrow(dd),
-    "M" = standardize(log(dd$body)),
+    "N" = nrow(dd),
+    "M_obs" = standardize(log(dd$body[complete.cases(dd$body)])),
+    "N_M_obs" = sum(complete.cases(dd$body)),
+    "N_M_mis" = sum(!complete.cases(dd$body)),
+    "ii_M_obs" = which(!is.na(dd$body)),
+    "ii_M_mis" = which(is.na(dd$body)),
+    "G_obs" = standardize(log(dd$group_size[complete.cases(dd$group_size)])),
+    "N_G_obs" = sum(complete.cases(dd$group_size)),
+    "N_G_mis" = sum(!complete.cases(dd$group_size)),
+    "ii_G_obs" = which(!is.na(dd$group_size)),
+    "ii_G_mis" = which(is.na(dd$group_size)),
     "B" = standardize(log(dd$brain)),
-    "G" = standardize(log(dd$group_size)),
     "Imat" = diag(nrow(dd)),
     "Dmat" = Dmat[ spp , spp ] / max(Dmat))
 
 # Stan model
-path <- "~/projects/rethinking22"
+path <- "~/projects/rethinking/rethinking22/"
 file <- file.path(path, "stan", "18", "1.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(data=stan_ls)
