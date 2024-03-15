@@ -305,30 +305,31 @@ B = as.integer(d$block),
 T = 1L + d$prosoc_left + 2L*d$condition)
 
 m14.3 <- ulam(
-alist(
-P ~ bernoulli(p),
-logit(p) <- abar[A] + a[A,T] + bbar[B] + b[B,T],
-# adaptive priors - non-centered
-transpars> matrix[A,4]:a <-
-compose_noncentered( sigma_A , L_Rho_A , zA ),
-transpars> matrix[B,4]:b <-
-compose_noncentered( sigma_B , L_Rho_B , zB ),
-matrix[4,A]:zA ~ normal( 0 , 1 ),
-matrix[4,B]:zB ~ normal( 0 , 1 ),
-zAbar[A] ~ normal(0,1),
-zBbar[B] ~ normal(0,1),
-transpars> vector[A]:abar <<- zAbar*tau_A,
-transpars> vector[B]:bbar <<- zBbar*tau_B,
-# fixed priors
-c(tau_A,tau_B) ~ exponential(1),
-vector[4]:sigma_A ~ exponential(1),
-cholesky_factor_corr[4]:L_Rho_A ~ lkj_corr_cholesky(4),
-vector[4]:sigma_B ~ exponential(1),
-cholesky_factor_corr[4]:L_Rho_B ~ lkj_corr_cholesky(4),
-# compute ordinary correlation matrixes
-gq> matrix[4,4]:Rho_A <<- Chol_to_Corr(L_Rho_A),
-gq> matrix[4,4]:Rho_B <<- Chol_to_Corr(L_Rho_B)
-) , data=dat , chains=4 , cores=4 , log_lik=TRUE )
+    alist(
+        P ~ bernoulli(p),
+        logit(p) <- abar[A] + a[A,T] + bbar[B] + b[B,T],
+        # adaptive priors - non-centered
+        transpars> matrix[A,4]:a <-
+            compose_noncentered( sigma_A , L_Rho_A , zA ),
+        transpars> matrix[B,4]:b <-
+            compose_noncentered( sigma_B , L_Rho_B , zB ),
+        matrix[4,A]:zA ~ normal( 0 , 1 ),
+        matrix[4,B]:zB ~ normal( 0 , 1 ),
+        zAbar[A] ~ normal(0,1),
+        zBbar[B] ~ normal(0,1),
+        transpars> vector[A]:abar <<- zAbar*tau_A,
+        transpars> vector[B]:bbar <<- zBbar*tau_B,
+        # fixed priors
+        c(tau_A,tau_B) ~ exponential(1),
+        vector[4]:sigma_A ~ exponential(1),
+        cholesky_factor_corr[4]:L_Rho_A ~ lkj_corr_cholesky(4),
+        vector[4]:sigma_B ~ exponential(1),
+        cholesky_factor_corr[4]:L_Rho_B ~ lkj_corr_cholesky(4),
+        # compute ordinary correlation matrixes
+        gq> matrix[4,4]:Rho_A <<- Chol_to_Corr(L_Rho_A),
+        gq> matrix[4,4]:Rho_B <<- Chol_to_Corr(L_Rho_B)
+    ),
+    data=dat, chains=4, cores=4, log_lik=TRUE)
 
 stancode(m14.3)
 
