@@ -149,6 +149,19 @@ precis(mBMG_OU_cc, depth=1)
 
 # TODO: Simplifiy, start only with one missing variable and then build up!
 
+# Drop missing brain cases and group size cases
+# Imput only body mass values (with no model)
+dd <- d[complete.cases(d$group_size,d$brain),]
+dat_all <- list(
+    N_spp = nrow(dd),
+    M = standardize(log(dd$body)),
+    B = standardize(log(dd$brain)),
+    G = standardize(log(dd$group_size)),
+    Imat = diag(nrow(dd)) )
+
+# distance matrix
+dd$Dmat <- Dmat[ dd$name , dd$name ] / max(Dmat)
+
 # Stan list
 stan_ls <- list(
     "N" = nrow(dd),
@@ -157,17 +170,13 @@ stan_ls <- list(
     "N_M_mis" = sum(!complete.cases(dd$body)),
     "ii_M_obs" = which(!is.na(dd$body)),
     "ii_M_mis" = which(is.na(dd$body)),
-    "G_obs" = standardize(log(dd$group_size[complete.cases(dd$group_size)])),
-    "N_G_obs" = sum(complete.cases(dd$group_size)),
-    "N_G_mis" = sum(!complete.cases(dd$group_size)),
-    "ii_G_obs" = which(!is.na(dd$group_size)),
-    "ii_G_mis" = which(is.na(dd$group_size)),
+    "G" = standardize(log(dd$group_size)),
     "B" = standardize(log(dd$brain)),
     "Imat" = diag(nrow(dd)),
-    "Dmat" = Dmat[ spp , spp ] / max(Dmat))
+    "Dmat" = dd$Dmat)
 
 # Stan model
 path <- "~/projects/rethinking/rethinking22/"
-file <- file.path(path, "stan", "18", "1.stan")
+file <- file.path(path, "stan", "18", "1a.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(data=stan_ls)
