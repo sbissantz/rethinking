@@ -35,8 +35,10 @@ parameters {
     real<lower=0> rho;
     // Imputation
     // Body mass
-    array[N_M_mis] real M_mis; 
-    array[N_M_obs] real M_obs;
+    // array[N_M_mis] real M_mis; 
+    vector[N_M_mis] M_mis; //Switched from array to vector for the linear model 
+    // array[N_M_obs] real M_obs;
+    vector[N_M_obs] M_obs; //Switched from array to vector for the linear model
 }
 transformed parameters {
     real<lower=0> sigma_sq;
@@ -44,7 +46,8 @@ transformed parameters {
 
     // Imputation
     // Body mass: Merge missing and observed values
-    array[N] real M;
+    // array[N] real M;
+    vector[N] M; //Switched from array to vector for the linear model
     M[ii_M_obs] = M_obs; 
     M[ii_M_mis] = M_mis; 
 }
@@ -56,10 +59,10 @@ model {
     rho ~ normal(3, 0.25);
     bM ~ normal(0, 0.5);
     bG ~ normal(0, 0.5);
-    a ~ normal(0,1);
+    a ~ std_normal();
     sigma ~ exponential(1);
     // Linear model
-    mu = a + bG * G + bM * to_vector(M);
+    mu = a + bG * G + bM * M;
     // Kernel matrix
     K = cov_GPL1(Dmat, eta_sq, rho, 0.01);
     // Likelihood or resiuadl prior 
