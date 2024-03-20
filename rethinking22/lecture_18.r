@@ -76,31 +76,83 @@ abline(lm(Hstar ~ S), lwd = 3, col = 2) # Boooom!
 # Primated Phylogeny
 # Moving from complete cases to imputation
 #
-data(Primates301)
+library(rethinking)
+library(ape)
+data(Primates301) ; data(Primates301_nex)
 d <- Primates301
 d$name <- as.character(d$name)
-dstan <- d[ complete.cases( d$group_size , d$body , d$brain ) , ]
-spp_cc <- dstan$name
 
-# complete case analysis
-dstan <- d[complete.cases(d$group_size,d$body,d$brain),]
-dat_cc <- list(
-    N_spp = nrow(dstan),
-    M = standardize(log(dstan$body)),
-    B = standardize(log(dstan$brain)),
-    G = standardize(log(dstan$group_size)),
-    Imat = diag(nrow(dstan)) )
+# Complete case analysis (1a.stan)
+
+# Data
+dcc <- d[complete.cases(d$group_size, d$body, d$brain), ]
+spp <- dcc$name
+# Phylogeny
+spp <- as.character(dcc$name)
+tree_trimmed <- keep.tip(Primates301_nex, spp)
+Rbm <- corBrownian(phy = tree_trimmed)
+V <- vcv(Rbm)
+Dmat <- cophenetic(tree_trimmed)
+
+# Stan list
+stan_ls <- list(
+    N = nrow(dcc),
+    M = standardize(log(dcc$body)),
+    B = standardize(log(dcc$brain)),
+    G = standardize(log(dcc$group_size)),
+    Dmat = Dmat[spp, spp] / max(Dmat)
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking22"
+file <- file.path(path, "stan", "18", "1a.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
+fit <- mdl$sample(data=stan_ls, parallel_chains = 4)
+fit$cmdstan_diagnose()
+
+# Posterior
+draws1a <- fit$draws(format = "data.frame")
+
+# Visualize
+plot(density(draws1a$bG), lwd = 3, col = "steelblue", xlab = "effect of G on B",
+ylim = c(0, 25)) 
+abline(v = 0, lty = 3)
+
+# Impute group size (1b.stan)
+
+# Data
+dd <- d[complete.cases(d$brain, d$body), ]
+spp <- dd$name
+# Phylogeny
+spp <- as.character(dd$name)
+tree_trimmed <- keep.tip(Primates301_nex, spp)
+Rbm <- corBrownian(phy = tree_trimmed)
+V <- vcv(Rbm)
+Dmat <- cophenetic(tree_trimmed)
+
+# Impute only group size
+stan_ls <- list(
+    N = nrow(dd),
+    N_G_obs = sum(complete.cases(dd$group_size)),
+    ii_G_obs = which(complete.cases(dd$group_size)),
+    N_G_mis = sum(is.na(dd$group_size)),
+    ii_G_mis = which(is.na(dd$group_size)),
+    M = standardize(log(dd$body)),
+    B = standardize(log(dd$brain)),
+    Dmat = Dmat[spp, spp] / max(Dmat)
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking22"
+file <- file.path(path, "stan", "18", "1b.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
+fit <- mdl$sample(data=stan_ls, parallel_chains = 4)
+fit$cmdstan_diagnose()
+
+# Posterior
+draws1b <- fit$draws(format = "data.frame")
+
+colnames(draws1b)
 
 
-
-
-
-
-
-
-# Start with complete cases (1a.stan)
-
-
-
-# Continue with one missing variable (1b.stan)
 # Continue with two missing variables (1c.stan)
