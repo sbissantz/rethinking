@@ -120,70 +120,7 @@ abline(v = 0, lty = 3)
 
 # Impute group size and body mass (1b.stan)
 
-# Data
-dd <- d[complete.cases(d$brain),]
-spp <- dd$name
-# Phylogeny
-spp <- as.character(dd$name)
-tree_trimmed <- keep.tip(Primates301_nex, spp)
-Rbm <- corBrownian(phy = tree_trimmed)
-V <- vcv(Rbm)
-Dmat <- cophenetic(tree_trimmed)
-
-
-stan_ls <- list(
-    N = nrow(dd),
-    # Impute G
-    N_G_obs = sum(complete.cases(dd$group_size)),
-    N_G_mis = sum(is.na(dd$group_size)),
-    G_obs = standardize(log(dd$group_size[complete.cases(dd$group_size)])),
-    ii_G_obs = which(complete.cases(dd$group_size)),
-    ii_G_mis = which(is.na(dd$group_size)),
-    # Impute B
-    N_M_obs = sum(complete.cases(dd$body)),
-    N_M_mis = sum(is.na(dd$body)),
-    M_obs = standardize(log(dd$body[complete.cases(dd$body)])),
-    ii_M_obs = which(complete.cases(dd$body)),
-    ii_M_mis = which(is.na(dd$body)),
-    # Oldje stuff 
-    B = standardize(log(dd$brain)),
-    Dmat = Dmat[spp, spp] / max(Dmat)
-)
-
-# Stan model
-path <- "~/projects/rethinking/rethinking22"
-file <- file.path(path, "stan", "18", "1b.stan")
-mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
-fit <- mdl$sample(data=stan_ls, parallel_chains = 4)
-fit$cmdstan_diagnose()
-
-# Posterior
-draws1b <- fit$draws(format = "data.frame")
-
-colnames(draws1b)
-
-#
-# Why is the other model running so much faster????
-#
-
-
-# Continue with two missing variables (1c.stan)
-
-## R code 14.49
-data(Primates301)
-d <- Primates301
-d$name <- as.character(d$name)
-dstan <- d[ complete.cases( d$group_size , d$body , d$brain ) , ]
-spp_cc <- dstan$name
-
-# complete case analysis
-dstan <- d[complete.cases(d$group_size,d$body,d$brain),]
-dat_cc <- list(
-    N_spp = nrow(dstan),
-    M = standardize(log(dstan$body)),
-    B = standardize(log(dstan$brain)),
-    G = standardize(log(dstan$group_size)),
-    Imat = diag(nrow(dstan)) )
+#  Ulam version (Why is it so much faster?)
 
 # drop just missing brain cases
 dd <- d[complete.cases(d$brain),]
@@ -224,3 +161,119 @@ fMBG_OU <- alist(
 mBMG_OU <- ulam( fMBG_OU , data=dat_all , chains=4 , cores=4 , sample=TRUE )
 
 stancode( mBMG_OU )
+
+# All 4 chains finished successfully.
+# Mean chain execution time: 214.0 seconds.
+# Total execution time: 225.9 seconds.
+
+stancode( mBMG_OU )
+#functions{
+    #matrix cov_GPL1(matrix x, real sq_alpha, real sq_rho, real delta) {
+        #int N = dims(x)[1];
+        #matrix[N, N] K;
+        #for (i in 1:(N-1)) {
+          #K[i, i] = sq_alpha + delta;
+          #for (j in (i + 1):N) {
+            #K[i, j] = sq_alpha * exp(-sq_rho * x[i,j] );
+            #K[j, i] = K[i, j];
+          #}
+        #}
+        #K[N, N] = sq_alpha + delta;
+        #return K;
+    #}
+    #vector merge_missing( array[] int miss_indexes , vector x_obs , vector x_miss ) {
+        #int N = dims(x_obs)[1];
+        #int N_miss = dims(x_miss)[1];
+        #vector[N] merged;
+        #merged = x_obs;
+        #for ( i in 1:N_miss )
+            #merged[ miss_indexes[i] ] = x_miss[i];
+        #return merged;
+    #}
+#}
+#data{
+     #matrix[184,184] Imat;
+     #int N_spp;
+     #vector[184] B;
+     #vector[184] M;
+     #array[2] int M_missidx;
+     #vector[184] G;
+     #array[33] int G_missidx;
+     #matrix[184,184] Dmat;
+#}
+#parameters{
+     #real a;
+     #real bG;
+     #real bM;
+     #real<lower=0> etasq;
+     #real<lower=0> rho;
+     #vector[2] M_impute;
+     #vector[33] G_impute;
+#}
+#model{
+     #vector[184] mu;
+     #vector[184] M_merge;
+     #vector[184] G_merge;
+     #matrix[N_spp,N_spp] K;
+    #rho ~ normal( 3 , 0.25 );
+    #etasq ~ normal( 1 , 0.25 );
+    #bM ~ normal( 0 , 0.5 );
+    #bG ~ normal( 0 , 0.5 );
+    #a ~ normal( 0 , 1 );
+    #K = cov_GPL1(Dmat, etasq, rho, 0.01);
+    #G_merge = merge_missing(G_missidx, to_vector(G), G_impute);
+    #G_merge ~ normal( 0 , 1 );
+    #M_merge = merge_missing(M_missidx, to_vector(M), M_impute);
+    #M_merge ~ normal( 0 , 1 );
+    #for ( i in 1:184 ) {
+        #mu[i] = a + bM * M_merge[i] + bG * G_merge[i];
+    #}
+    #B ~ multi_normal( mu , K );
+#}
+
+# Data
+dd <- d[complete.cases(d$brain),]
+spp <- dd$name
+# Phylogeny
+spp <- as.character(dd$name)
+tree_trimmed <- keep.tip(Primates301_nex, spp)
+Rbm <- corBrownian(phy = tree_trimmed)
+V <- vcv(Rbm)
+Dmat <- cophenetic(tree_trimmed)
+
+stan_ls <- list(
+    N = nrow(dd),
+    # Impute G
+    N_G_obs = sum(complete.cases(dd$group_size)),
+    N_G_mis = sum(is.na(dd$group_size)),
+    G_obs = standardize(log(dd$group_size[complete.cases(dd$group_size)])),
+    ii_G_obs = which(complete.cases(dd$group_size)),
+    ii_G_mis = which(is.na(dd$group_size)),
+    # Impute B
+    N_M_obs = sum(complete.cases(dd$body)),
+    N_M_mis = sum(is.na(dd$body)),
+    M_obs = standardize(log(dd$body[complete.cases(dd$body)])),
+    ii_M_obs = which(complete.cases(dd$body)),
+    ii_M_mis = which(is.na(dd$body)),
+    # Oldje stuff 
+    B = standardize(log(dd$brain)),
+    Dmat = Dmat[spp, spp] / max(Dmat)
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking22"
+file <- file.path(path, "stan", "18", "1b2.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
+fit <- mdl$sample(data=stan_ls, num_chains=4, parallel_chains = 4, 
+iter_warmup = 1e3, iter_sampling = 1e3)
+
+fit$cmdstan_diagnose()
+
+# Posterior
+draws1b <- fit$draws(format = "data.frame")
+
+colnames(draws1b)
+
+#
+# TODO understand 1b2.stan and make it  like 1b1.stan
+#
