@@ -120,116 +120,9 @@ abline(v = 0, lty = 3)
 
 # Impute group size and body mass (1b.stan)
 
-#  Ulam version (Why is it so much faster?)
-
-# drop just missing brain cases
-dd <- d[complete.cases(d$brain),]
-dat_all <- list(
-    N_spp = nrow(dd),
-    M = standardize(log(dd$body)),
-    B = standardize(log(dd$brain)),
-    G = standardize(log(dd$group_size)),
-    Imat = diag(nrow(dd)) )
-
-dd <- d[complete.cases(d$brain),]
-table( M=!is.na(dd$body) , G=!is.na(dd$group_size) )
-
-# now with phylogeny
-
-library(ape)
-spp <- as.character(dd$name)
-tree_trimmed <- keep.tip( Primates301_nex, spp )
-Rbm <- corBrownian( phy=tree_trimmed )
-V <- vcv(Rbm)
-Dmat <- cophenetic( tree_trimmed )
-
-# distance matrix
-dat_all$Dmat <- Dmat[ spp , spp ] / max(Dmat)
-
-# imputation ignoring models of M and G
-fMBG_OU <- alist(
-    B ~ multi_normal( mu , K ),
-    mu <- a + bM*M + bG*G,
-    M ~ normal(0,1),
-    G ~ normal(0,1),
-    matrix[N_spp,N_spp]:K <- cov_GPL1(Dmat,etasq,rho,0.01),
-    a ~ normal( 0 , 1 ),
-    c(bM,bG) ~ normal( 0 , 0.5 ),
-    etasq ~ half_normal(1,0.25),
-    rho ~ half_normal(3,0.25)
-)
-mBMG_OU <- ulam( fMBG_OU , data=dat_all , chains=4 , cores=4 , sample=TRUE )
-
-stancode( mBMG_OU )
-
-# All 4 chains finished successfully.
-# Mean chain execution time: 214.0 seconds.
-# Total execution time: 225.9 seconds.
-
-stancode( mBMG_OU )
-#functions{
-    #matrix cov_GPL1(matrix x, real sq_alpha, real sq_rho, real delta) {
-        #int N = dims(x)[1];
-        #matrix[N, N] K;
-        #for (i in 1:(N-1)) {
-          #K[i, i] = sq_alpha + delta;
-          #for (j in (i + 1):N) {
-            #K[i, j] = sq_alpha * exp(-sq_rho * x[i,j] );
-            #K[j, i] = K[i, j];
-          #}
-        #}
-        #K[N, N] = sq_alpha + delta;
-        #return K;
-    #}
-    #vector merge_missing( array[] int miss_indexes , vector x_obs , vector x_miss ) {
-        #int N = dims(x_obs)[1];
-        #int N_miss = dims(x_miss)[1];
-        #vector[N] merged;
-        #merged = x_obs;
-        #for ( i in 1:N_miss )
-            #merged[ miss_indexes[i] ] = x_miss[i];
-        #return merged;
-    #}
-#}
-#data{
-     #matrix[184,184] Imat;
-     #int N_spp;
-     #vector[184] B;
-     #vector[184] M;
-     #array[2] int M_missidx;
-     #vector[184] G;
-     #array[33] int G_missidx;
-     #matrix[184,184] Dmat;
-#}
-#parameters{
-     #real a;
-     #real bG;
-     #real bM;
-     #real<lower=0> etasq;
-     #real<lower=0> rho;
-     #vector[2] M_impute;
-     #vector[33] G_impute;
-#}
-#model{
-     #vector[184] mu;
-     #vector[184] M_merge;
-     #vector[184] G_merge;
-     #matrix[N_spp,N_spp] K;
-    #rho ~ normal( 3 , 0.25 );
-    #etasq ~ normal( 1 , 0.25 );
-    #bM ~ normal( 0 , 0.5 );
-    #bG ~ normal( 0 , 0.5 );
-    #a ~ normal( 0 , 1 );
-    #K = cov_GPL1(Dmat, etasq, rho, 0.01);
-    #G_merge = merge_missing(G_missidx, to_vector(G), G_impute);
-    #G_merge ~ normal( 0 , 1 );
-    #M_merge = merge_missing(M_missidx, to_vector(M), M_impute);
-    #M_merge ~ normal( 0 , 1 );
-    #for ( i in 1:184 ) {
-        #mu[i] = a + bM * M_merge[i] + bG * G_merge[i];
-    #}
-    #B ~ multi_normal( mu , K );
-#}
+# Ulam version (Why is it so much faster?)
+# Ulam version was faster, because I did forget to set the prior for the mixed 
+# parameter/data vectors!
 
 # Data
 dd <- d[complete.cases(d$brain),]
@@ -261,19 +154,45 @@ stan_ls <- list(
 )
 
 # Stan model
+# Now Stan model runs fast! 
 path <- "~/projects/rethinking/rethinking22"
+# file <- file.path(path, "stan", "18", "1b2.stan")
+# Switched from arrays to vectors for the mixed parameter/data vectors
 file <- file.path(path, "stan", "18", "1b2.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
-fit <- mdl$sample(data=stan_ls, num_chains=4, parallel_chains = 4, 
-iter_warmup = 1e3, iter_sampling = 1e3)
+fit <- mdl$sample(data=stan_ls, chains = 4, parallel_chains = 4)
 
+# Diagnostics
+#
 fit$cmdstan_diagnose()
+fit$cmdstan_summary()
 
 # Posterior
 draws1b <- fit$draws(format = "data.frame")
 
-colnames(draws1b)
+# Visualize
+plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
+xlab = "effect of G on B", ylim = c(0, 25)) 
+lines(density(draws1b$bG), lwd = 3)
+abline(v = 0, lty = 3)
 
-#
-# TODO understand 1b2.stan and make it  like 1b1.stan
-#
+# show M imputed values against regression of B on M
+plot( d$body , d$brain , lwd=3 , col=grau(0.2) , xlab="body mass (standardized)" , ylab="brain volume (standardized)" )
+draws1b$
+points( apply(post$M_impute,2,mean) , dat_all$B[mBMG_OU@data$M_missidx] , lwd=3 , col=2 )
+for ( i in 1:2 ) {
+    y <- dat_all$B[mBMG_OU@data$M_missidx][i]
+    lines( PI(post$M_impute[,i]) , c(y,y) , lwd=8 , col=col.alpha(2,0.7) )
+}
+
+# show relation between G estimates and M
+Gest <- apply(post$G_impute,2,mean)
+idx <- which(is.na(dat_all$G))
+plot( dat_cc$M , dat_cc$G , lwd=2 , col=grau() , xlab="Body mass (standardized)" , ylab="Group size (standardized)" )
+points( dat_all$M[idx] , Gest , lwd=3 , col=2 )
+
+# compare posterior bG of complete case and imputation models
+postcc <- extract.samples(mBMG_OU_cc)
+dens( postcc$bG , lwd=3 , col=grau(0.8) , xlab="effect of G on B" , ylim=c(0,25) )
+dens( post$bG , lwd=3 , col=2 , add=TRUE )
+abline(v=0,lty=3)
