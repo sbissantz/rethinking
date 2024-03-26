@@ -42,13 +42,10 @@ parameters {
     real a;
     real bG;
     real bM;
-    real<lower=0> sigma;
     real<lower=0> eta_sq;
     real<lower=0> rho;
 }
 transformed parameters {
-    real<lower=0> sigma_sq;
-    sigma_sq = square(sigma);
     // Impute Group Size
     array[N] real G_arr;
     G_arr[ii_G_obs] = G_obs;
@@ -59,23 +56,29 @@ transformed parameters {
     M_arr[ii_M_obs] = M_obs;
     M_arr[ii_M_mis] = M_mis;
     vector[N] M = to_vector(M_arr);
+    array[N] real M_arr;
 }
 model { 
     vector[N] mu; 
     matrix[N, N] K;
     // Priors
-    eta_sq ~ normal(1, 0.25);
     rho ~ normal(3, 0.25);
+    eta_sq ~ normal(1, 0.25);
     bM ~ normal(0, 0.5);
     bG ~ normal(0, 0.5);
     a ~ std_normal();
-    sigma ~ exponential(1);
+    // Kernel matrix
+    K = cov_GPL1(Dmat, eta_sq, rho, 0.01);
+    // Prior/likelihood for mixed variables
+    // IMPORTANT: Folks Theorem of Statistical Computing!
+    // If you forget to set these priors your runtime goes to 3 hours!
+    // Took me 3 days to find out and fix this!
+    G ~ normal( 0 , 1 );
+    M ~ normal( 0 , 1 );
     // Linear model
     for(i in 1:N) {
         mu[i] = a + bG * G[i] + bM * M[i];       
     }
-    // Kernel matrix
-    K = cov_GPL1(Dmat, eta_sq, rho, 0.01);
     // Likelihood or residual prior 
     B ~ multi_normal(mu, K);
 }
