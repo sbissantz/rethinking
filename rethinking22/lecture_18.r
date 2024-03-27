@@ -169,6 +169,8 @@ fit$cmdstan_summary()
 
 # Posterior
 draws1b <- fit$draws(format = "data.frame")
+M_impute <- fit$draws("M_mis", format = "matrix")
+G_impute <- fit$draws("G_mis", format = "matrix")
 
 # Visualize
 plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
@@ -176,20 +178,33 @@ xlab = "effect of G on B", ylim = c(0, 25))
 lines(density(draws1b$bG), lwd = 3)
 abline(v = 0, lty = 3)
 
-# show M imputed values against regression of B on M
-plot( d$body , d$brain , lwd=3 , col=grau(0.2) , xlab="body mass (standardized)" , ylab="brain volume (standardized)" )
-draws1b$
-points( apply(post$M_impute,2,mean) , dat_all$B[mBMG_OU@data$M_missidx] , lwd=3 , col=2 )
-for ( i in 1:2 ) {
-    y <- dat_all$B[mBMG_OU@data$M_missidx][i]
-    lines( PI(post$M_impute[,i]) , c(y,y) , lwd=8 , col=col.alpha(2,0.7) )
+# Show M imputed values against regression of B on M
+
+plot(standardize(log(dd$body)), stan_ls$B, lwd = 3, col = grau(0.2),
+    xlab = "body mass (standardized)", ylab = "brain volume (standardized)"
+)
+x <- apply(post$M_impute,2,mean)
+y <- stan_ls$B[stan_ls$ii_M_mis]
+points(x, y, lwd=3 , col = 2)
+for (i in 1:2) {
+    y <- stan_ls$B[stan_ls$ii_M_mis][i]
+    lines(PI(M_impute[, i]), c(y, y), lwd = 8, col = col.alpha(2, 0.7))
 }
 
 # show relation between G estimates and M
-Gest <- apply(post$G_impute,2,mean)
-idx <- which(is.na(dat_all$G))
-plot( dat_cc$M , dat_cc$G , lwd=2 , col=grau() , xlab="Body mass (standardized)" , ylab="Group size (standardized)" )
-points( dat_all$M[idx] , Gest , lwd=3 , col=2 )
+Gest <- apply(G_impute,2,mean)
+plot(standardize(log(dd$group_size)), standardize(log(dd$body)),
+    lwd = 2, col = grau(), 
+    xlab = "Body mass (standardized)", ylab = "Group size (standardized)"
+)
+# Important: Imputed values do not follow the trend!
+for (i in 1:33) {
+    x <- stan_ls$M[stan_ls$ii_G_mis][i]
+    lines(rep(x,2), PI(G_impute[, i]), lwd = 8, col = col.alpha(2, 0.3))
+}
+points( stan_ls$M_obs[stan_ls$ii_G_mis], Gest , lwd=3 , col=2 )
+
+# TODO
 
 # compare posterior bG of complete case and imputation models
 postcc <- extract.samples(mBMG_OU_cc)
