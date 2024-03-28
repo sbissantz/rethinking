@@ -412,3 +412,7 @@ xlab = "effect of G on B", ylim = c(0, 25))
 lines(density(draws1b$bG), lwd = 3)
 lines(density(draws2$bGB), lwd = 3, col = "red")
 abline(v = 0, lty = 3)
+
+#
+# Todo: next model
+#
