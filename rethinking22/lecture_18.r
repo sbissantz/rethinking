@@ -393,12 +393,22 @@ draws2 <- fit$draws(format = "data.frame")
 M_impute <- fit$draws("M_mis", format = "matrix")
 G_impute <- fit$draws("G_mis", format = "matrix")
 
+# Show relation between G estimates and M
+Gest <- apply(G_impute,2,mean)
+plot(standardize(log(dd$group_size)), standardize(log(dd$body)),
+    lwd = 2, col = grau(), 
+    xlab = "Body mass (standardized)", ylab = "Group size (standardized)"
+)
+# Important: Association between M and G modeled; imputed values follow trend!
+for (i in 1:33) {
+    x <- stan_ls$M[stan_ls$ii_G_mis][i]
+    lines(rep(x,2), PI(G_impute[, i]), lwd = 8, col = col.alpha(2, 0.3))
+}
+points( stan_ls$M_obs[stan_ls$ii_G_mis], Gest , lwd=3 , col=2 )
+
 # Visualize
 plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
 xlab = "effect of G on B", ylim = c(0, 25)) 
 lines(density(draws1b$bG), lwd = 3)
 lines(density(draws2$bGB), lwd = 3, col = "red")
 abline(v = 0, lty = 3)
-
-
-
