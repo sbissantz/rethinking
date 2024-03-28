@@ -82,7 +82,98 @@ data(Primates301) ; data(Primates301_nex)
 d <- Primates301
 d$name <- as.character(d$name)
 
+# Overall DAG
+
+dag <- dagitty::dagitty( 'dag {
+Brainsize [outcome,pos="0,0"]
+Bstar [outcome,pos="-0.5,0"]
+mB [outcome,pos="-0.5,0.1"]
+
+Groupsize [exposure,pos="1,0"]
+Gstar [exposure,pos="1.5,0"]
+mG [exposure,pos="1.5,0.1"]
+
+Bodymass [selected,pos="0.5,0.25"]
+Mstar [selected,pos="0.15,0.25"]
+mM [selected,pos="0.15,0.35"]
+
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+
+Groupsize -> Brainsize
+Bodymass -> Brainsize
+Bodymass -> Groupsize
+
+Groupsize -> Gstar
+Bodymass -> Mstar 
+Brainsize -> Bstar 
+
+mG -> Gstar
+mB -> Bstar
+mM -> Mstar
+
+u -> Groupsize
+u -> Bodymass
+u -> Brainsize
+history -> u
+}')
+plot(dag)
+
 # Complete case analysis (1a.stan)
+
+# DAG
+dag <- dagitty::dagitty( 'dag {
+Brainsize [outcome,pos="0,0"]
+Groupsize [exposure,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Groupsize -> Brainsize
+Bodymass -> Brainsize
+Bodymass -> Groupsize
+u -> Groupsize
+u -> Bodymass
+u -> Brainsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 1 
+dag <- dagitty::dagitty( 'dag {
+Brainsize [outcome,pos="0,0"]
+Groupsize [exposure,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Groupsize -> Brainsize
+Bodymass -> Brainsize
+u -> Brainsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 2
+dag <- dagitty::dagitty( 'dag {
+Groupsize [outcome,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Bodymass -> Groupsize
+u -> Groupsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 3
+dag <- dagitty::dagitty( 'dag {
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+u -> Bodymass 
+history -> u
+}')
+plot(dag)
+
 
 # Data
 dcc <- d[complete.cases(d$group_size, d$body, d$brain), ]
@@ -119,6 +210,44 @@ ylim = c(0, 25))
 abline(v = 0, lty = 3)
 
 # Impute group size and body mass (1b.stan)
+# ...ignore models for each
+
+op <- par()
+par(mfrow = c(3,1))
+
+# Submodel 1 
+dag <- dagitty::dagitty( 'dag {
+Brainsize [outcome,pos="0,0"]
+Groupsize [exposure,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Groupsize -> Brainsize
+Bodymass -> Brainsize
+u -> Brainsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 2 
+dag <- dagitty::dagitty( 'dag {
+Groupsize [outcome,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+history -> u
+}')
+plot(dag)
+
+# Submodel 3
+dag <- dagitty::dagitty( 'dag {
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+history -> u
+}')
+plot(dag)
+par(op)
 
 # Ulam version (Why is it so much faster?)
 # Ulam version was faster, because I did forget to set the prior for the mixed 
@@ -172,42 +301,104 @@ draws1b <- fit$draws(format = "data.frame")
 M_impute <- fit$draws("M_mis", format = "matrix")
 G_impute <- fit$draws("G_mis", format = "matrix")
 
-# Visualize
-plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
-xlab = "effect of G on B", ylim = c(0, 25)) 
-lines(density(draws1b$bG), lwd = 3)
-abline(v = 0, lty = 3)
-
 # Show M imputed values against regression of B on M
 
 plot(standardize(log(dd$body)), stan_ls$B, lwd = 3, col = grau(0.2),
     xlab = "body mass (standardized)", ylab = "brain volume (standardized)"
 )
-x <- apply(post$M_impute,2,mean)
-y <- stan_ls$B[stan_ls$ii_M_mis]
+x <- apply(M_impute,2,mean)
+y <- stan_ls$B[alstan_ls$ii_M_mis]
+# Important: M and B strongly associated, so imputed M values follow the trend!
 points(x, y, lwd=3 , col = 2)
 for (i in 1:2) {
     y <- stan_ls$B[stan_ls$ii_M_mis][i]
     lines(PI(M_impute[, i]), c(y, y), lwd = 8, col = col.alpha(2, 0.7))
 }
 
-# show relation between G estimates and M
+# Show relation between G estimates and M
 Gest <- apply(G_impute,2,mean)
 plot(standardize(log(dd$group_size)), standardize(log(dd$body)),
     lwd = 2, col = grau(), 
     xlab = "Body mass (standardized)", ylab = "Group size (standardized)"
 )
-# Important: Imputed values do not follow the trend!
+# Important: Association between M and G not modeled, so imputed values do not 
+# follow the trend!
 for (i in 1:33) {
     x <- stan_ls$M[stan_ls$ii_G_mis][i]
     lines(rep(x,2), PI(G_impute[, i]), lwd = 8, col = col.alpha(2, 0.3))
 }
 points( stan_ls$M_obs[stan_ls$ii_G_mis], Gest , lwd=3 , col=2 )
 
-# TODO
+# Compare posterior bG of complete case and imputation models
 
-# compare posterior bG of complete case and imputation models
-postcc <- extract.samples(mBMG_OU_cc)
-dens( postcc$bG , lwd=3 , col=grau(0.8) , xlab="effect of G on B" , ylim=c(0,25) )
-dens( post$bG , lwd=3 , col=2 , add=TRUE )
-abline(v=0,lty=3)
+# Visualize
+plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
+xlab = "effect of G on B", ylim = c(0, 25)) 
+lines(density(draws1b$bG), lwd = 3)
+abline(v = 0, lty = 3)
+
+# Impute G using model 
+
+op <- par()
+par(mfrow = c(3,1))
+
+# Submodel 1 
+dag <- dagitty::dagitty( 'dag {
+Brainsize [outcome,pos="0,0"]
+Groupsize [exposure,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Groupsize -> Brainsize
+Bodymass -> Brainsize
+u -> Brainsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 2
+dag <- dagitty::dagitty( 'dag {
+Groupsize [outcome,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Bodymass -> Groupsize
+u -> Groupsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 3
+dag <- dagitty::dagitty( 'dag {
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+history -> u
+}')
+plot(dag)
+par(op)
+
+#
+# TODO: Debug and check with ULAM version
+#
+
+# Stan model
+path <- "~/projects/rethinking/rethinking22"
+file <- file.path(path, "stan", "18", "2.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
+fit <- mdl$sample(data=stan_ls, chains = 4, parallel_chains = 4)
+
+# Posterior
+draws2 <- fit$draws(format = "data.frame")
+M_impute <- fit$draws("M_mis", format = "matrix")
+G_impute <- fit$draws("G_mis", format = "matrix")
+
+# Visualize
+plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
+xlab = "effect of G on B", ylim = c(0, 25)) 
+lines(density(draws1b$bG), lwd = 3)
+lines(density(draws2$bGB), lwd = 3, col = "red")
+abline(v = 0, lty = 3)
+
+
+
