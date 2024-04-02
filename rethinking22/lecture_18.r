@@ -337,7 +337,7 @@ xlab = "effect of G on B", ylim = c(0, 25))
 lines(density(draws1b$bG), lwd = 3)
 abline(v = 0, lty = 3)
 
-# Impute G using model 
+# Impute G using model
 
 op <- par()
 par(mfrow = c(3,1))
@@ -378,10 +378,6 @@ history -> u
 plot(dag)
 par(op)
 
-#
-# TODO: Debug and check with ULAM version
-#
-
 # Stan model
 path <- "~/projects/rethinking/rethinking22"
 file <- file.path(path, "stan", "18", "2.stan")
@@ -414,5 +410,123 @@ lines(density(draws2$bGB), lwd = 3, col = "red")
 abline(v = 0, lty = 3)
 
 #
-# Todo: next model
+# DAG (final model)
 #
+
+op <- par()
+par(mfrow = c(3,1))
+
+# Submodel 1 
+dag <- dagitty::dagitty( 'dag {
+Brainsize [outcome,pos="0,0"]
+Groupsize [exposure,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Groupsize -> Brainsize
+Bodymass -> Brainsize
+u -> Brainsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 2
+dag <- dagitty::dagitty( 'dag {
+Groupsize [outcome,pos="1,0"]
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+Bodymass -> Groupsize
+u -> Groupsize
+history -> u
+}')
+plot(dag)
+
+# Submodel 3
+dag <- dagitty::dagitty( 'dag {
+Bodymass [outcome,pos="0.5,0.25"]
+u [pos="0.5,0.5"]
+history [pos="1,0.5"] 
+u -> Bodymass 
+history -> u
+}')
+plot(dag)
+
+par(op)
+
+# Data
+spp <- d$name
+# Phylogeny
+spp <- as.character(d$name)
+tree_trimmed <- keep.tip(Primates301_nex, spp)
+Rbm <- corBrownian(phy = tree_trimmed)
+V <- vcv(Rbm)
+Dmat <- cophenetic(tree_trimmed)
+
+stan_ls <- list(
+    N = nrow(d),
+    # Impute B
+    N_B_obs = sum(complete.cases(d$brain)),
+    N_B_mis = sum(is.na(d$brain)),
+    B_obs = standardize(log(d$brain[complete.cases(d$brain)])),
+    ii_B_obs = which(complete.cases(d$brain)),
+    ii_B_mis = which(is.na(d$brain)),
+    # Impute G
+    N_G_obs = sum(complete.cases(d$group_size)),
+    N_G_mis = sum(is.na(d$group_size)),
+    G_obs = standardize(log(d$group_size[complete.cases(d$group_size)])),
+    ii_G_obs = which(complete.cases(d$group_size)),
+    ii_G_mis = which(is.na(d$group_size)),
+    # Impute B
+    N_M_obs = sum(complete.cases(d$body)),
+    N_M_mis = sum(is.na(d$body)),
+    M_obs = standardize(log(d$body[complete.cases(d$body)])),
+    ii_M_obs = which(complete.cases(d$body)),
+    ii_M_mis = which(is.na(d$body)),
+    # Distance matrix
+    Dmat = Dmat[spp, spp] / max(Dmat)
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking22"
+file <- file.path(path, "stan", "18", "3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
+fit <- mdl$sample(data = stan_ls, chains = 4, parallel_chains = 4)
+
+#
+# How long does the solution run?
+#
+
+# Why does the model take so much longer?
+
+#
+# How long does the rethinking solution run?
+#
+
+
+
+# Posterior
+draws3 <- fit$draws(format = "data.frame")
+M_impute <- fit$draws("M_mis", format = "matrix")
+G_impute <- fit$draws("G_mis", format = "matrix")
+
+# Show relation between G estimates and M
+Gest <- apply(G_impute,2,mean)
+plot(standardize(log(dd$group_size)), standardize(log(dd$body)),
+    lwd = 2, col = grau(), 
+    xlab = "Body mass (standardized)", ylab = "Group size (standardized)"
+)
+# Important: Association between M and G modeled; imputed values follow trend!
+for (i in 1:33) {
+    x <- stan_ls$M[stan_ls$ii_G_mis][i]
+    lines(rep(x,2), PI(G_impute[, i]), lwd = 8, col = col.alpha(2, 0.3))
+}
+points( stan_ls$M_obs[stan_ls$ii_G_mis], Gest , lwd=3 , col=2 )
+
+# Visualize
+plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
+xlab = "effect of G on B", ylim = c(0, 25)) 
+lines(density(draws1b$bG), lwd = 3)
+lines(density(draws2$bGB), lwd = 3, col = "red")
+lines(density(draws3$bGB), lwd = 3, col = "red")
+abline(v = 0, lty = 3)
