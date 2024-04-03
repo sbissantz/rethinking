@@ -497,13 +497,15 @@ fit <- mdl$sample(data = stan_ls, chains = 4, parallel_chains = 4)
 # How long does the solution run?
 #
 
+# All 4 chains finished successfully.
+# Mean chain execution time: 2987.1 seconds.
+# Total execution time: 3021.5 seconds.
+
 # Why does the model take so much longer?
 
 #
 # How long does the rethinking solution run?
 #
-
-
 
 # Posterior
 draws3 <- fit$draws(format = "data.frame")
@@ -512,7 +514,7 @@ G_impute <- fit$draws("G_mis", format = "matrix")
 
 # Show relation between G estimates and M
 Gest <- apply(G_impute,2,mean)
-plot(standardize(log(dd$group_size)), standardize(log(dd$body)),
+plot(standardize(log(d$group_size)), standardize(log(d$body)),
     lwd = 2, col = grau(), 
     xlab = "Body mass (standardized)", ylab = "Group size (standardized)"
 )
@@ -524,9 +526,110 @@ for (i in 1:33) {
 points( stan_ls$M_obs[stan_ls$ii_G_mis], Gest , lwd=3 , col=2 )
 
 # Visualize
-plot(density(draws1a$bG), lwd = 3, col = "steelblue", 
+plot(density(draws3$bGB), lwd = 3, col = "steelblue", 
 xlab = "effect of G on B", ylim = c(0, 25)) 
 lines(density(draws1b$bG), lwd = 3)
 lines(density(draws2$bGB), lwd = 3, col = "red")
 lines(density(draws3$bGB), lwd = 3, col = "red")
 abline(v = 0, lty = 3)
+
+################################################################################
+# Richards solution
+# (Runtimes are equal)
+#
+library(rethinking)
+library(ape)
+data(Primates301) ; data(Primates301_nex)
+d <- Primates301
+d$name <- as.character(d$name)
+fna <- function(x) ifelse( is.na(x) , -99 , x )
+dat_voll <- list(
+    N_spp = nrow(d),
+    M = fna( standardize(log(d$body)) ),
+    B = fna( standardize(log(d$brain)) ),
+    G = fna( standardize(log(d$group_size)) ),
+    N_B_miss = sum(is.na(d$brain)) ,
+    N_G_miss = sum(is.na(d$group_size)) ,
+    N_M_miss = sum(is.na(d$body)) ,
+    B_missidx = which( is.na(d$brain) ),
+    G_missidx = which( is.na(d$group_size) ),
+    M_missidx = which( is.na(d$body) )
+)
+spp_all <- as.character(d$name)
+tree_voll <- keep.tip( Primates301_nex, spp_all )
+Dmat <- cophenetic( tree_voll )
+dat_voll$Dmat <- Dmat[ spp_all , spp_all ] / max(Dmat)
+path <- "~/projects/rethinking/rethinking22"
+file <- file.path(path, "stan", "18", "18_BMG_OU.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic = TRUE)
+fit <- mdl$sample(data=dat_voll, parallel_chains = 4)
+fit$cmdstan_diagnose()
+################################################################################
+
+#################
+# Cat adoption example
+
+L <- 0.25
+curve( exp(-L*x) , from=0 , to=10 , lwd=4 , xlab="time" , ylab="proportion not yet adopted" , ylim=c(0,1) )
+
+n <- 10
+y <- rexp(n,L)
+for ( i in 1:length(y) ) lines( c(y[i],y[i]) , c(0,exp(-L*y[i])) , lwd=4 , col=ifelse(y[i]>5,2,4) )
+
+abline(v=5,lty=3,lwd=2)
+
+# simulated example with analyses (wasn't in lecture)
+
+N <- 100
+L <- 0.15
+y <- rexp(N,L)
+k <- ifelse( y > 5 , 1 , 0 ) # censoring indicator
+y_obs <- y
+y_obs[k==1] <- 5
+
+# show that ignoring censored values bad
+dat0 <- list( y=y_obs[k==0] )
+m0 <- ulam(
+    alist(
+        y ~ exponential(lambda),
+        lambda ~ exponential(0.5)
+    ) , data=dat0 , chains=4 , cores=4 )
+
+# model that imputes censored values
+dat <- list( y=y_obs , k=k , N=N )
+mc1 <- "
+data{
+    int N;
+    vector[N] y;
+    int k[N];
+}
+parameters{
+    real<lower=0> lambda;
+    real<lower=5> y_cens[N];
+}
+model{
+    lambda ~ exponential(0.5);
+    for ( i in 1:N ) {
+        if ( k[i]==0 ) {
+            y[i] ~ exponential(lambda);
+            y_cens[i] ~ normal(5,1);
+        }
+        if ( k[i]==1 )
+            y_cens[i] ~ exponential(lambda);
+    }
+}
+"
+m1 <- cstan( model_code=mc1 , data=dat , chains=4 , cores=4 )
+
+# model with marginalization
+m2 <- ulam(
+    alist(
+        y|k==0 ~ exponential(lambda),
+        y|k==1 ~ custom( exponential_lccdf( y | lambda ) ),
+        lambda ~ exponential(0.5)
+    ) , data=dat , chains=4 , cores=4 )
+
+# m1 and m2 should arrive at same inference
+precis(m0)
+precis(m1)
+precis(m2)
