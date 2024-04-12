@@ -589,7 +589,7 @@ y_obs[k==1] <- 5
 
 # show that ignoring censored values bad
 dat0 <- list( y=y_obs[k==0] )
-m0 <- ulam(
+m0 <- rethinking::ulam(
     alist(
         y ~ exponential(lambda),
         lambda ~ exponential(0.5)
@@ -619,10 +619,10 @@ model{
     }
 }
 "
-m1 <- cstan( model_code=mc1 , data=dat , chains=4 , cores=4 )
+m1 <- rethinking::cstan( model_code=mc1 , data=dat , chains=4 , cores=4 )
 
 # model with marginalization
-m2 <- ulam(
+m2 <- rethinking::ulam(
     alist(
         y|k==0 ~ exponential(lambda),
         y|k==1 ~ custom( exponential_lccdf( y | lambda ) ),
@@ -630,6 +630,6 @@ m2 <- ulam(
     ) , data=dat , chains=4 , cores=4 )
 
 # m1 and m2 should arrive at same inference
-precis(m0)
-precis(m1)
-precis(m2)
+rethinking::precis(m0)
+rethinking::precis(m1)
+rethinking::precis(m2)
