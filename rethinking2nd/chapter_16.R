@@ -85,6 +85,67 @@ for(i in 1:30) {
     points(d$h, w_sim[i,], col=col.alpha("steelblue", 0.2), pch=20)
 }
 points(d$h, d$w, col=col.alpha("black", 0.9), pch=16)
-points(d$h, w_sim_mu, col=col.alpha("red", 0.5), pch=21)
+points(d$h, w_sim_mu, col=col.alpha("red", 0.5), pch=20, cex = 2)
 
-?point
+# 16.2 Hidden minds and observed behavior
+#
+
+library(rethinking)
+data(Boxes)
+precis(Boxes)
+# 1: unchosen color
+# 2: majority demonstrated
+# 3. minority demonstrated
+# Note: `majority first` indiciates if majority demonstrated first
+
+# table(Boxes$y) / length(Boxes$y)
+prop.table(table(Boxes$y))
+
+# Generative simulation
+
+# In generative simulation we assume strategies and simulate behavior
+# In statistical models we assume behavior (data) and infer strategies (pars)
+
+# Different strategies produce the same outcome
+set.seed(7)
+N <- 30 # number of children
+# Half use random strategy
+y1 <- sample(1:3, size = N /2, replace = TRUE)
+# Half use majority strategy
+y2 <- rep(2, N/2)
+# Combine and shuffle y1 and y2
+y <- sample(c(y1, y2))
+# Count the 2s
+sum(y == 2) / N
+# /2/3 choose majority color but only half followed majority strategy
+
+# Model 5 different strategies:
+# 1. Follow majority
+# 2. Follow minority
+# 3. Maverick
+# 4. Random – 1/3, 1/3, 1/3
+# 5. Follow first -  majority if majority first, minority if minority first
+
+# Stan model
+data(Boxes_model)
+cat(Boxes_model)
+
+# Data
+stan_ls <- list(
+    "N" = nrow(Boxes),
+    "S" = 5,
+    "y" = Boxes$y,
+    majority_first = Boxes$majority_first
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking2nd"
+file <- file.path(path, "stan", "16", "2.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=stan_ls, chains=4 , parallel_chains=4)
+# Diagnostics
+fit$cmdstan_diagnose()
+fit$print("p", max_rows=200)
+
+# Posterior draws
+postdraws <- fit$draws("p", format = "data.frame")
