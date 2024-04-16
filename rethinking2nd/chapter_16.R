@@ -138,6 +138,8 @@ stan_ls <- list(
     majority_first = Boxes$majority_first
 )
 
+# Hidden state model
+
 # Stan model
 path <- "~/projects/rethinking/rethinking2nd"
 file <- file.path(path, "stan", "16", "2.stan")
@@ -148,4 +150,65 @@ fit$cmdstan_diagnose()
 fit$print("p", max_rows=200)
 
 # Posterior draws
-postdraws <- fit$draws("p", format = "data.frame")
+postdraws <- fit$draws(format = "data.frame")
+names(postdraws)
+
+# Visualize
+p <- fit$draws("p", format = "matrix")
+p_labels <- c("follow majority", "follow minority", "maverick", "random", 
+"follow first")
+p_mu <- colMeans(p)
+p_sd <- apply(p, 2, sd)
+dotchart(p_mu, labels = p_labels, main = "Posterior means of strategies",
+    xlim = c(0, 0.5)) 
+for (i in 1:5) {
+    lines(c(p_mu[i] - 2 * p_sd[i], p_mu[i] + 2 * p_sd[i]), c(i, i))
+}
+
+# Add a predictor variable
+#
+data(Boxes_model_gender)
+cat(Boxes_model_gender)
+
+# Data
+stan_ls <- list(
+    "N" = nrow(Boxes),
+    "S" = 5,
+    "y" = Boxes$y,
+    majority_first = Boxes$majority_first,
+    gender = Boxes$gender
+)
+
+# Hidden state model
+
+# Stan model
+path <- "~/projects/rethinking/rethinking2nd"
+file <- file.path(path, "stan", "16", "3.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=stan_ls, chains=4 , parallel_chains=4)
+# Diagnostics
+fit$cmdstan_diagnose()
+fit$print("p", max_rows=200)
+
+# Posterior draws
+postdraws <- fit$draws(format = "matrix")
+colnames(postdraws)
+
+# Visualize
+p <- fit$draws("p", format = "matrix")
+p_labels <- c("follow majority", "follow minority", "maverick", "random", 
+"follow first")
+p_mu <- colMeans(p)
+p_sd <- apply(p, 2, sd)
+dotchart(p_mu, labels = rep(p_labels, 2, each = 2),
+main = "Posterior means of strategies", xlim = c(0, 0.5)) 
+my_col <- rep(c("blue", "pink"), 5)
+for (i in 1:10) {
+    lines(c(p_mu[i] - 2 * p_sd[i], p_mu[i] + 2 * p_sd[i]), c(i, i),
+    col = my_col[i], lwd = 2)
+}
+
+# TODO: DO the age model
+
+data(Boxes_model_age)
+cat(Boxes_model_age)
