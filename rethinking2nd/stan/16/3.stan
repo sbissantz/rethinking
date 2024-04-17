@@ -1,19 +1,21 @@
 // Boxes model with gender as covariate
 data{
-    int N;
+    int N; // number of observations
+    int S; // number of strategies
+    int G; // number of gender categories 
     array[N] int y;
     array[N] int majority_first;
     array[N] int gender;
 }
 parameters{
     // Important for the outcome array of two simplexes
-    array[2] simplex[5] p;
+    array[G] simplex[S] p;
 }
 model{
-    vector[5] phi;
+    vector[S] phi;
     
     // prior
-    for ( j in 1:2 ) p[j] ~ dirichlet( rep_vector(4,5) );
+    for ( g in 1:G ) p[g] ~ dirichlet( rep_vector(4,5) );
     
     // probability of data
     for ( i in 1:N ) {
@@ -27,7 +29,7 @@ model{
             if ( y[i]==3 ) phi[5]=1; else phi[5]=0;
         
         // compute log( p_s * Pr(y_i|s) )
-        for ( s in 1:5 ) phi[s] = log(p[gender[i],s]) + log(phi[s]);
+        for ( s in 1:S ) phi[s] = log(p[gender[i],s]) + log(phi[s]);
         // compute average log-probability of y_i
         target += log_sum_exp( phi );
     }
