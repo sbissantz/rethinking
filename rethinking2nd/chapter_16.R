@@ -138,7 +138,7 @@ stan_ls <- list(
     majority_first = Boxes$majority_first
 )
 
-# Hidden state model
+# Hidden state model (no covariates)
 
 # Stan model
 path <- "~/projects/rethinking/rethinking2nd"
@@ -179,7 +179,7 @@ stan_ls <- list(
     gender = Boxes$gender
 )
 
-# Hidden state model
+# Hidden state model (gender as covariate)
 
 # Stan model
 path <- "~/projects/rethinking/rethinking2nd"
@@ -208,7 +208,52 @@ for (i in 1:10) {
     col = my_col[i], lwd = 2)
 }
 
-# TODO: DO the age model
-
+# Hidden state model (age as covariate)
 data(Boxes_model_age)
 cat(Boxes_model_age)
+
+# Data
+stan_ls <- list(
+    "N" = nrow(Boxes),
+    "S" = 5,
+    "y" = Boxes$y,
+    majority_first = Boxes$majority_first,
+    age = Boxes$age
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking2nd"
+file <- file.path(path, "stan", "16", "4.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=stan_ls, chains=4 , parallel_chains=4)
+# Diagnostics
+fit$cmdstan_diagnose()
+fit$print()
+
+
+
+# Posterior draws
+postdraws <- fit$draws(format = "matrix")
+colnames(postdraws)
+colnames(postdraws)
+
+# Data
+stan_ls <- list(
+    "N" = nrow(Boxes),
+    "S" = 5,
+    "G" = 2,
+    "y" = Boxes$y,
+    majority_first = Boxes$majority_first,
+    age = Boxes$age,
+    gender = Boxes$gender
+)
+
+# Hidden state model (gender and age as covariate)
+# New!
+
+file <- file.path(path, "stan", "16", "5.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=stan_ls, chains=4 , parallel_chains=4)
+# Diagnostics
+fit$cmdstan_diagnose()
+fit$print(max_rows = 50)
