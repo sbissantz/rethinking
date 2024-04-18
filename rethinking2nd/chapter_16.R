@@ -299,3 +299,12 @@ fit$print(max_rows = 50)
 postdraws <- fit$draws(format = "data.frame")
 plot(NULL, xlim = c(0,1), ylim = c(0,1.5), xlab = "age", 
 ylab = "nuts per second", xaxt = "n")
+# Raw data
+pts <- stan_ls$n / stan_ls$seconds
+point_size <- normalize(stan_ls$seconds)
+points( jitter(stan_ls$age, 0.02), pts, col = "steelblue", cex = point_size*3)
+for(i in 1:30) { with(postdraws, 
+    curve( phi[i] * (1-exp(-k[i]*x))^theta[i], add = TRUE, 
+    col = col.alpha("black", 0.9), lwd = 2))
+    
+}
