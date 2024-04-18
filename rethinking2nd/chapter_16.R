@@ -257,3 +257,45 @@ fit <- mdl$sample(data=stan_ls, chains=4 , parallel_chains=4)
 # Diagnostics
 fit$cmdstan_diagnose()
 fit$print(max_rows = 50)
+
+
+# 16.3 Ordinariy differential nut cracking
+#
+library(rethinking)
+data(Panda_nuts)
+
+# Prior predictive simulation
+N <- 1e4
+phi <- rlnorm(N, log(1), 0.1)
+k <- rlnorm(N, log(2), 0.25)
+theta <- rlnorm(N, log(5), 0.25)
+
+# Relative growth curve
+plot(NULL, xlim = c(0,1.5), ylim = c(0,1), xaxt = "n", xlab = "age", 
+ylab = "body mass")
+at <- seq(0, 1.5, by = 0.25)
+axis(1, at = at, labels=round(at*max(Panda_nuts$age)))
+for (i in 1:20) curve((1-exp(-k[i]*x))^theta[i], add = TRUE, 
+col = col.alpha("black", 0.9))
+
+# Stan
+#
+stan_ls <- list(
+    N = nrow(Panda_nuts),
+    n = as.integer(Panda_nuts$nuts_opened),
+    age = Panda_nuts$age/max(Panda_nuts$age),
+    seconds = Panda_nuts$seconds
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking2nd"
+file <- file.path(path, "stan", "16", "6.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=stan_ls, chains=4 , parallel_chains=4)
+# Diagnostics
+fit$cmdstan_diagnose()
+fit$print(max_rows = 50)
+
+postdraws <- fit$draws(format = "data.frame")
+plot(NULL, xlim = c(0,1), ylim = c(0,1.5), xlab = "age", 
+ylab = "nuts per second", xaxt = "n")
