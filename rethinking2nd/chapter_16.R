@@ -308,3 +308,76 @@ for(i in 1:30) { with(postdraws,
     col = col.alpha("black", 0.9), lwd = 2))
     
 }
+
+
+# 16.4 Population dynamics
+#
+
+library(rethinking)
+data(Lynx_Hare)
+plot(1:21, Lynx_Hare[, 3], ylim = c(0, 100), xlab = "year", 
+ylab = "thousands of pelts", xaxt = "n", type = "l", lwd = 2)
+at <- c(1,11,21)
+axis(1, at = at, labels = Lynx_Hare$Year[at])
+lines(1:21, Lynx_Hare[, 2], lwd = 2, col = "steelblue")
+points(1:21, Lynx_Hare[, 3])
+points(1:21, Lynx_Hare[, 2], col = "steelblue")
+text(17, 80, "Lepus", pos = 2)
+text(19, 50, "Lynx", pos = 2, col = "steelblue")
+
+# Solve ODE through simulation
+#
+
+sim_lynx_hare <- function( n_steps , init , theta , dt=0.002 ) {
+    L <- rep(NA,n_steps)
+    H <- rep(NA,n_steps)
+    L[1] <- init[1]
+    H[1] <- init[2]
+    for ( i in 2:n_steps ) {
+    # theta 1: birth rate of hares, theta 2: mortality rate of hares
+    H[i] <- H[i-1] + dt*H[i-1]*( theta[1] - theta[2]*L[i-1] )
+    # theta 3: birth rate of lynx, theta 2: mortality rate of lynx 
+    L[i] <- L[i-1] + dt*L[i-1]*( theta[3]*H[i-1] - theta[4] )
+    }
+return( cbind(L,H) )
+}
+
+# Visualize
+#
+theta <- c( 0.5 , 0.05 , 0.025 , 0.5 )
+z <- sim_lynx_hare( 1e4 , as.numeric(Lynx_Hare[1,2:3]) , theta )
+plot( z[,2] , type="l" , ylim=c(0,max(z[,2])) , lwd=2 , xaxt="n" ,
+ylab="number (thousands)" , xlab="" )
+lines( z[,1] , col=rangi2 , lwd=2 )
+mtext( "time" , 1 )
+
+# Visualize distribution 
+#
+N <- 1e4
+Ht <- 1e4
+p <- rbeta(N,2,18)
+h <- rbinom(N, Ht, p)
+h <- round(h/1000, 2)
+plot(density(h), col = "seagreen", lwd = 4)
+
+# Stan model
+#
+data(Lynx_Hare_model)
+cat(Lynx_Hare_model)
+
+stan_ls <- list(
+    N = nrow(Lynx_Hare),
+    pelts = Lynx_Hare[,2:3]
+)
+
+# Stan model
+path <- "~/projects/rethinking/rethinking2nd"
+file <- file.path(path, "stan", "16", "7.stan")
+mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
+fit <- mdl$sample(data=stan_ls, chains=4, parallel_chains=4, adapt_delta = 0.95)
+fit$cmdstan_diagnose()
+# Note that the alpha parameters are on the log-odds scale!
+fit$print("p", max_rows=200) # 0.26
+fit$print("k", max_rows=200) # 6.05
+fit$print("sigma", max_rows=200) # 1.62
+# Sigma is different! (1.62 vs. 0.21)
