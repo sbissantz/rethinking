@@ -375,9 +375,32 @@ path <- "~/projects/rethinking/rethinking2nd"
 file <- file.path(path, "stan", "16", "7.stan")
 mdl <- cmdstanr::cmdstan_model(file, pedantic=TRUE)
 fit <- mdl$sample(data=stan_ls, chains=4, parallel_chains=4, adapt_delta = 0.95)
+
+# Diagnostics
 fit$cmdstan_diagnose()
-# Note that the alpha parameters are on the log-odds scale!
-fit$print("p", max_rows=200) # 0.26
-fit$print("k", max_rows=200) # 6.05
-fit$print("sigma", max_rows=200) # 1.62
-# Sigma is different! (1.62 vs. 0.21)
+fit$print(max_rows=200) # 0.26
+help("diagnostics", "posterior")
+
+# Posterior draws
+postdraws <- fit$draws(format = "data.frame")
+pelts_pred <- fit$draws("pelts_pred", format = "matrix")
+pop <- fit$draws("pop", format = "matrix")
+
+pelts <- stan_ls$pelts
+plot(1:21, pelts[,2], ylim = c(0, 120), xlab = "year", ylab = "pelts", 
+xaxt = "n", cex = 3, pch = 20)
+at <- c(1,11,21)
+axis(1, at = at, labels = Lynx_Hare$Year[at])
+points(1:21, pelts[,1], col = "blue", cex = 3, pch = 20)
+for(s in 1:21) {
+    lines(1:21, pelts_pred[s,1:21], col = col.alpha("black", 0.8))
+    lines(1:21, pelts_pred[s,22:42], col = col.alpha("blue", 0.8))
+}
+plot(NULL, xlim = c(0, 21), ylim = c(0, 500), xlab = "year", ylab = "pelts",
+xaxt = "n")
+at <- c(1, 11, 21)
+axis(1, at = at, labels = Lynx_Hare$Year[at])
+for(s in 1:21) {
+    lines(1:21, pop[s,1:21], col = col.alpha("black", 0.8))
+    lines(1:21, pop[s,22:42], col = col.alpha("blue", 0.8))
+}
