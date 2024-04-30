@@ -21,6 +21,8 @@ m16.1 <- ulam(
         sigma ~ exponential(1)
     ), data = d, chains = 4, cores = 4)
 
+stancode(m16.1)
+
 precis(m16.1)
       #mean   sd 5.5% 94.5% n_eff Rhat4
 #p     0.25 0.06 0.17  0.35   497  1.01
